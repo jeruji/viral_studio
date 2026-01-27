@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.18), transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(16, 185, 129, 0.2), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(244, 63, 94, 0.18), transparent 45%),
+    #0b1020;
+  min-height: 100vh;
+}

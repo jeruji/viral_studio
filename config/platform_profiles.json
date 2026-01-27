@@ -1,0 +1,30 @@
+{
+  "tiktok": {
+    "ratio": "9:16",
+    "duration": [12, 22],
+    "hook_window": [0, 2],
+    "pacing": "very_fast",
+    "cta": "use_sound_tag_friend"
+  },
+  "instagram": {
+    "ratio": "9:16",
+    "duration": [12, 25],
+    "hook_window": [0, 2],
+    "pacing": "fast",
+    "cta": "save_share"
+  },
+  "youtube_short": {
+    "ratio": "9:16",
+    "duration": [15, 35],
+    "hook_window": [0, 3],
+    "pacing": "medium_fast",
+    "cta": "subscribe_comment"
+  },
+  "youtube_video": {
+    "ratio": "16:9",
+    "duration": [120, 360],
+    "hook_window": [0, 8],
+    "pacing": "storytelling",
+    "cta": "watch_next"
+  }
+}
