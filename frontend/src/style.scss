@@ -9,7 +9,7 @@ $blue-gdp: #004687;
 
 @font-face {
   font-family: "Mixta-Sharp";
-  src: url("https://use.typekit.net/jwi6adf.css"); 
+  src: url("https://use.typekit.net/jwi6adf.css");
 }
 
 
@@ -17,6 +17,7 @@ $blue-gdp: #004687;
   font-family: "Mixta-Sharp";
   font-weight: 700;
 }
+
 .height-40 {
   height: 40px;
 }
@@ -25,12 +26,14 @@ $blue-gdp: #004687;
   margin-bottom: 20px;
 }
 
-.color-grey{
+.color-grey {
   color: $color-almost-white;
 }
-.cursor-pointer{
+
+.cursor-pointer {
   cursor: pointer;
 }
+
 .input-main {
   width: 100%;
   padding: 10px;
@@ -39,18 +42,18 @@ $blue-gdp: #004687;
   background-color: $color-almost-white;
 }
 
-.color-radius{
+.color-radius {
   border-radius: 8px;
 }
 
-.input-color{
+.input-color {
   background-color: $color-almost-white;
   border-radius: 8px;
   outline: none;
   border: 1px solid #ccc;
 }
 
-.label-main{
+.label-main {
   width: 100%;
   padding: 10px;
   border-radius: 8px;
@@ -64,6 +67,7 @@ $blue-gdp: #004687;
   gap: 10px;
   margin-bottom: 20px;
 }
+
 .button-main {
   background-color: #fff;
   color: black;
@@ -74,8 +78,8 @@ $blue-gdp: #004687;
   padding: auto;
 }
 
-.custom-file-label{
-   background-color: #fff;
+.custom-file-label {
+  background-color: #fff;
   color: black;
   border: 1px solid #606060;
   border-radius: 8px;
@@ -83,25 +87,28 @@ $blue-gdp: #004687;
   padding: 2px;
   min-width: 120px;
 }
-.btn-blue{
+
+.btn-blue {
   background-color: #00A0DD;
 }
-.btn-param{
+
+.btn-param {
   width: 132px;
 }
 
 
-.bg-white{
+.bg-white {
   background-color: #f5f5f5 !important
 }
 
-.bg-qr{
+.bg-qr {
   background-color: white;
   border-radius: 15px;
 }
 
 .left-sidebar {
-  width: 80px; /* fully fixed, no bootstrap percentage shrink */
+  width: 80px;
+  /* fully fixed, no bootstrap percentage shrink */
   flex-shrink: 0;
 }
 
@@ -133,18 +140,19 @@ $blue-gdp: #004687;
   background-color: #b0c4cc;
   transform: scale(1.15);
 }
-.transparent-input{
-  all:unset
+
+.transparent-input {
+  all: unset
 }
 
-.select-option{
+.select-option {
   border-radius: 8px;
   height: 30px;
   background-color: $color-almost-white;
   cursor: pointer;
 }
 
-.input-none{
+.input-none {
   all: unset;
 }
 
@@ -164,6 +172,7 @@ $blue-gdp: #004687;
   th:not(:first-child) {
     border-left: 1px solid $color-almost-white;
   }
+
   td {
     border-left: 1px solid $almost-black;
   }
@@ -174,6 +183,7 @@ $blue-gdp: #004687;
       border-right: 0;
     }
   }
+
   thead:last-child tr:last-child th:first-child,
   tbody:last-child tr:last-child td:first-child {
     border-radius: 0 0 0 10px;
@@ -194,6 +204,13 @@ $blue-gdp: #004687;
   color: white;
 }
 
-textarea{
-  border-radius: 10px;
+textarea {
+  border-radius: 8px;
+  border: 1px solid #000000;
+}
+
+.border-radius-8 {
+  border-radius: 8px;
+  border: 1px solid #000000;
+
 }

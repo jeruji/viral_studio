@@ -152,20 +152,17 @@ import NavbarPage from "./Navbar";
 import swal from "sweetalert";
 import { useNavigate } from "react-router-dom";
 import { submitJob } from "../api";
-import { Job, moodOptions } from "../types";
+import { audioStyles, Job, moodOptions, platformOptions } from "../types";
 
 const HomePage = () => {
     const [loading, setLoading] = useState<boolean>(true)
     const [lyricSelection, setLyricSelection] = useState("uploadLyric")
     const [description, setDescription] = useState<string>("")
-    // const [dataAudio, setDataAudio] = useState<File>()
-    // const [dataVideo, setDataVideo] = useState<File>()
     // const [dataImage, setDataImage] = useState<File[]>([])
     const [dataLyrics, setDataLyrics] = useState<File | string | null>()
-    // const [dataMood, setDataMood] = useState<File | string>()
     const [error, setError] = useState<string | null>(null);
     const [mood, setMood] = useState("hype");
-    const [platforms, setPlatforms] = useState("tiktok");
+    const [platforms, setPlatforms] = useState(["tiktok"]);
     const [remix, setRemix] = useState(true);
     const [audioStyle, setAudioStyle] = useState("lofi_chill");
     const [clipSegSec, setClipSegSec] = useState("5");
@@ -173,26 +170,26 @@ const HomePage = () => {
     const [lyrics, setLyrics] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
     const [jobs, setJobs] = useState<Job[]>([]);
-    async function handleSubmitJob(e: React.FormEvent) {
-        e.preventDefault();
-        if (!audio || !lyrics) return;
-        setError(null);
-        try {
-            const job = await submitJob({
-                mood,
-                platforms,
-                remix,
-                audio_style: audioStyle,
-                clip_seg_sec: clipSegSec,
-                audio,
-                lyrics,
-                video: video || undefined
-            });
-            setJobs((prev) => [job, ...prev]);
-        } catch (err) {
-            setError("Gagal submit job. Pastikan API berjalan.");
-        }
-    }
+    // async function handleSubmitJob(e: React.FormEvent) {
+    //     e.preventDefault();
+    //     if (!audio || !lyrics) return;
+    //     setError(null);
+    //     try {
+    //         const job = await submitJob({
+    //             mood,
+    //             platforms,
+    //             remix,
+    //             audio_style: audioStyle,
+    //             clip_seg_sec: clipSegSec,
+    //             audio,
+    //             lyrics,
+    //             video: video || undefined
+    //         });
+    //         setJobs((prev) => [job, ...prev]);
+    //     } catch (err) {
+    //         setError("Gagal submit job. Pastikan API berjalan.");
+    //     }
+    // }
     useEffect(() => {
         console.log("print")
         setLoading(false)
@@ -244,9 +241,39 @@ const HomePage = () => {
                                         <span >{audio ? audio.name : " No audio chosen"}</span>
                                     </div>
                                 </div>
+                                <div className="row">
+                                    <div className="col-3">
+                                    </div>
+                                    <div className="col">
+                                        <label className="flex items-center gap-3 text-sm text-slate-300">
+                                            <input
+                                                type="checkbox"
+                                                checked={remix}
+                                                onChange={(e) => setRemix(e.target.checked)}
+                                            />
+                                            Remix audio
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="row py-2">
+                                    <div className="col-3">Audio Style</div>
+                                    <div className="col">
+                                        <select
+                                            value={audioStyle}
+                                            onChange={(e) => setAudioStyle(e.target.value)}
+                                            className="custom-file-label"
+                                        >
+                                            {audioStyles.map((s) => (
+                                                <option key={s} value={s}>
+                                                    {s}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                                 <div className="row py-2">
                                     <div className="col-3">
-                                        Video
+                                        Video (optional)
                                     </div>
                                     <div className="col">
                                         <label htmlFor="video-upload" className="custom-file-label px-2">Choose File</label>
@@ -267,28 +294,38 @@ const HomePage = () => {
                                         <span >{video ? video.name : " No video chosen"}</span>
                                     </div>
                                 </div>
-                                {/* <div className="row py-2">
-                                    <div className="col-3">
-                                        Image
-                                    </div>
+                                <div className="row py-2">
+                                    <div className="col-3">Clip Segment (sec)</div>
                                     <div className="col">
-                                        <label htmlFor="image-upload" className="custom-file-label px-2">Choose File</label>
-
-                                        <input type="file" hidden accept="image/*" id="image-upload" multiple onChange={(event) => {
-                                            const files = event.target.files;
-                                            if (!files || files.length === 0) return;
-
-                                            const file = files[0];
-
-                                            const reader = new FileReader();
-                                            reader.readAsDataURL(file);
-                                            reader.onloadend = () => {
-                                                setDataImage([...dataImage, file]);
-                                            };
-                                        }} />
-                                        <span >{dataImage && dataImage.length > 0 ? dataImage.length + ' selected' : " No image chosen"}</span>
+                                        <input
+                                            value={clipSegSec}
+                                            onChange={(e) => setClipSegSec(e.target.value)}
+                                            className="border-radius-8"
+                                        ></input>
                                     </div>
-                                </div> */}
+                                </div>
+                                <div className="row py-2">
+                                    <div className="col-3">Platform</div>
+                                    <div className="col">
+                                        {/* <input
+                                            value={platforms}
+                                            className="border-radius-8"
+                                            onChange={(e) => setPlatforms(e.target.value)}
+                                        /> */}
+                                        <select
+                                            value={platforms.join()}
+                                            multiple
+                                            onChange={(e) => setPlatforms([...platforms, e.target.value])}
+                                            className="custom-file-label"
+                                        >
+                                            {platformOptions.map((p) => (
+                                                <option key={p} value={p}>
+                                                    {p}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                                 <div className="row">
                                     <div className="col-3">Mood</div>
                                     <div className="col">
@@ -353,7 +390,7 @@ const HomePage = () => {
                                         Description
                                     </div>
                                     <div className="col-6">
-                                        <textarea defaultValue={description} placeholder="Add description" className="w-100" style={{ minHeight: '100px' }} onChange={(e) => { setDescription(e.currentTarget.value) }} />
+                                        <textarea defaultValue={description} placeholder="Add description" className="w-100 ps-2" style={{ minHeight: '100px' }} onChange={(e) => { setDescription(e.currentTarget.value) }} />
                                     </div>
                                 </div>
 
