@@ -59,8 +59,8 @@ Buka http://localhost:5173.
 Email/password sesuai admin di step 3.
 7) Submit job
 
-Upload audio + lyrics (+ video optional)
-Isi mood, platforms, audio_style, clip_seg_sec
+Upload audio + lyrics (opsional) atau isi description, (+ video optional)
+Isi mood, platforms, audio_style, clip_seg_sec, content_type (music/general)
 Submit
 8) Cek status job
 

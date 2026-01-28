@@ -121,9 +121,15 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
             python_exe = Path("python")
 
         cmd = [str(python_exe), "main.py"]
-        cmd += ["--audio", input_paths["audio"]]
-        cmd += ["--lyrics", input_paths["lyrics"]]
+        if input_paths.get("audio"):
+            cmd += ["--audio", input_paths["audio"]]
+        if input_paths.get("lyrics"):
+            cmd += ["--lyrics", input_paths["lyrics"]]
         cmd += ["--mood", params["mood"]]
+        if params.get("description"):
+            cmd += ["--description", params["description"]]
+        if params.get("content_type"):
+            cmd += ["--content-type", params["content_type"]]
         if input_paths.get("video"):
             cmd += ["--video", input_paths["video"]]
         if params.get("platforms"):
@@ -136,6 +142,8 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
             cmd += ["--clip-seg-sec", str(params["clip_seg_sec"])]
         if os.getenv("KIE_CALLBACK_URL"):
             cmd += ["--kie-callback-url", os.getenv("KIE_CALLBACK_URL")]
+        if params.get("content_type") == "general":
+            cmd += ["--skip-video-gen"]
 
         log_dir = Path("outputs") / "jobs"
         job_out_dir = log_dir / f"job_{job_id}" / "run"
@@ -172,8 +180,10 @@ def create_job(
     remix: bool = Form(False),
     audio_style: Optional[str] = Form(None),
     clip_seg_sec: Optional[float] = Form(None),
-    audio: UploadFile = File(...),
-    lyrics: UploadFile = File(...),
+    content_type: Optional[str] = Form("music"),
+    description: Optional[str] = Form(None),
+    audio: Optional[UploadFile] = File(None),
+    lyrics: Optional[UploadFile] = File(None),
     video: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
@@ -182,10 +192,14 @@ def create_job(
     upload_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
 
-    audio_path = upload_dir / f"{current.id}_{ts}_{audio.filename}"
-    lyrics_path = upload_dir / f"{current.id}_{ts}_{lyrics.filename}"
-    audio_path.write_bytes(audio.file.read())
-    lyrics_path.write_bytes(lyrics.file.read())
+    audio_path = None
+    lyrics_path = None
+    if audio:
+        audio_path = upload_dir / f"{current.id}_{ts}_{audio.filename}"
+        audio_path.write_bytes(audio.file.read())
+    if lyrics:
+        lyrics_path = upload_dir / f"{current.id}_{ts}_{lyrics.filename}"
+        lyrics_path.write_bytes(lyrics.file.read())
 
     video_path = None
     if video:
@@ -198,10 +212,12 @@ def create_job(
         "remix": remix,
         "audio_style": audio_style,
         "clip_seg_sec": clip_seg_sec,
+        "content_type": content_type,
+        "description": description,
     }
     inputs = {
-        "audio": str(audio_path),
-        "lyrics": str(lyrics_path),
+        "audio": str(audio_path) if audio_path else None,
+        "lyrics": str(lyrics_path) if lyrics_path else None,
         "video": str(video_path) if video_path else None,
     }
 

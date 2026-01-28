@@ -39,8 +39,10 @@ export async function submitJob(payload: {
   remix: boolean;
   audio_style?: string;
   clip_seg_sec?: string;
-  audio: File;
-  lyrics: File;
+  content_type?: string;
+  description?: string;
+  audio?: File | null;
+  lyrics?: File | null;
   video?: File;
 }): Promise<Job> {
   const token = getToken();
@@ -50,8 +52,10 @@ export async function submitJob(payload: {
   if (payload.remix) form.append("remix", "true");
   if (payload.audio_style) form.append("audio_style", payload.audio_style);
   if (payload.clip_seg_sec) form.append("clip_seg_sec", payload.clip_seg_sec);
-  form.append("audio", payload.audio);
-  form.append("lyrics", payload.lyrics);
+  if (payload.content_type) form.append("content_type", payload.content_type);
+  if (payload.description) form.append("description", payload.description);
+  if (payload.audio) form.append("audio", payload.audio);
+  if (payload.lyrics) form.append("lyrics", payload.lyrics);
   if (payload.video) form.append("video", payload.video);
 
   const res = await fetch(`${API_URL}/jobs`, {
