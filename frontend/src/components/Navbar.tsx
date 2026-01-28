@@ -13,7 +13,7 @@ export default function NavbarPage() {
   const menuItems = [
     {
       title: "Home",
-      icon: require("../../public/images/Home-icon.svg"),
+      icon: "/images/Home-icon.svg",
       action: () => {
         navigate("/home");
         navigate(0);
@@ -21,7 +21,7 @@ export default function NavbarPage() {
     },
     {
       title: "List User",
-      icon: require("../../public/images/icon-user-blue.svg"),
+      icon: "/images/icon-user-blue.svg",
       action: () => navigate("/list-user"),
     },
   ];
@@ -38,7 +38,7 @@ export default function NavbarPage() {
             onClick={() => navigate("/home")}
           >
             <img
-              src={require("../../public/images/gdp-logo-white.svg")}
+              src={"/images/gdp-logo-white.svg"}
               className="cursor-pointer"
               style={{ height: "40px" }}
             />
@@ -71,7 +71,7 @@ export default function NavbarPage() {
             >
               <img
                 className="cursor-pointer menu-icon"
-                src={require("../../public/images/logout-icon.svg")}
+                src={"/images/logout-icon.svg"}
                 style={{ width: "25px" }}
                 onClick={logOut}
               />

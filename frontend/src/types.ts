@@ -9,3 +9,6 @@ export type Job = {
   created_at: string;
   updated_at: string;
 };
+
+export const moodOptions = ["happy", "hype", "sad", "mellow", "nostalgic"];
+export const audioStyles = ["jedag_jedug", "tiktok_house", "mellow_rainy", "cinematic_epic", "lofi_chill"];
