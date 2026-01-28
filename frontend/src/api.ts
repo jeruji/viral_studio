@@ -6,9 +6,9 @@ export const getToken = () => localStorage.getItem("vs_token");
 export const setToken = (token: string) => localStorage.setItem("vs_token", token);
 export const clearToken = () => localStorage.removeItem("vs_token");
 
-export async function login(username: string, password: string) {
+export async function login(email: string, password: string) {
   const form = new FormData();
-  form.append("username", username);
+  form.append("email", email);
   form.append("password", password);
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",

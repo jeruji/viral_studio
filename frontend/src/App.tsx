@@ -11,7 +11,7 @@ export default function App() {
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [mood, setMood] = useState("hype");
@@ -31,7 +31,7 @@ export default function App() {
     e.preventDefault();
     setError(null);
     try {
-      const data = await login(username, password);
+      const data = await login(email, password);
       setToken(data.access_token);
       setLocalToken(data.access_token);
     } catch (err) {
@@ -105,9 +105,9 @@ export default function App() {
                 <form onSubmit={handleLogin} className="mt-6 grid gap-4">
                   <input
                     className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                    placeholder="Username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                   <input
                     className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
