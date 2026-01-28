@@ -38,8 +38,11 @@ def parse_args():
         description="Viral Studio: Multi-platform creative + Video + ML re-scoring"
     )
 
-    p.add_argument("--audio", required=True, help="Path to audio file (mp3/wav)")
-    p.add_argument("--lyrics", required=True, help="Path to lyrics txt")
+    p.add_argument("--audio", required=False, help="Path to audio file (mp3/wav)")
+    p.add_argument("--lyrics", required=False, help="Path to lyrics txt (optional)")
+    p.add_argument("--description", default="", help="Optional description (used when lyrics not provided)")
+    p.add_argument("--content-type", choices=["music", "general"], default="music",
+                   help="Content type: music uses audio+lyrics; general can be caption-only")
     p.add_argument("--mood", required=True, choices=["happy", "hype", "sad", "mellow", "nostalgic"])
     p.add_argument("--remix", action="store_true", help="Enable audio adaptation/remix for each platform")
         # --- Character reference extraction (from source video) ---
@@ -76,6 +79,8 @@ def parse_args():
         default=None,
         help="Optional source video/footage path (if provided, OpenCV features will be extracted)"
     )
+    p.add_argument("--skip-video-gen", action="store_true",
+               help="Skip video generation; only produce captions/hashtags")
 
     p.add_argument(
         "--platforms",
@@ -502,18 +507,22 @@ def merge_video_audio(video_obj, audio_path: str) -> str:
 def main():
     args = parse_args()
 
-    audio_path = Path(args.audio)
-    lyrics_path = Path(args.lyrics)
+    audio_path = Path(args.audio) if args.audio else None
+    lyrics_path = Path(args.lyrics) if args.lyrics else None
     video_path = Path(args.video) if args.video else None
 
-    if not audio_path.exists():
-        raise FileNotFoundError(f"Audio file not found: {audio_path}")
-    if not lyrics_path.exists():
+    if args.content_type == "music":
+        if not audio_path or not audio_path.exists():
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+    if lyrics_path and not lyrics_path.exists():
         raise FileNotFoundError(f"Lyrics file not found: {lyrics_path}")
     if video_path and not video_path.exists():
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
-    lyrics = lyrics_path.read_text(encoding="utf-8", errors="ignore")
+    lyrics = lyrics_path.read_text(encoding="utf-8", errors="ignore") if lyrics_path else ""
+    description = (args.description or "").strip()
+    if not lyrics and not description:
+        raise ValueError("Provide --lyrics or --description")
     mood = args.mood.lower()
     caption_seed = (args.caption or "").strip()
 
@@ -532,10 +541,19 @@ def main():
         raise ValueError("No valid platforms selected.")
 
     # ====== Feature Extraction ======
-    audio_feat = extract_audio_features(str(audio_path))
+    if args.content_type == "music" and audio_path:
+        audio_feat = extract_audio_features(str(audio_path))
+    else:
+        audio_feat = {
+            "bpm": 120.0,
+            "rms": 0.0,
+            "duration_sec": 0.0,
+            "spectral_centroid": 0.0,
+        }
 
     # Text features from lyrics + optional caption seed (CTA, sentiment, etc.)
-    combined_text = (lyrics + "\n\n" + caption_seed).strip()
+    base_text = lyrics if lyrics else description
+    combined_text = (base_text + "\n\n" + caption_seed).strip()
     text_feat = extract_text_features(combined_text)
 
     # Video features (optional)
@@ -564,7 +582,7 @@ def main():
     # ====== Init LLM + KIE ======
     llm = None
     kie = None
-    if not args.resume_from_kie:
+    if not args.resume_from_kie and not args.skip_video_gen:
         llm = GPT52Client(api_key=args.openai_key)
         kie = KieVeoClient(
             KieConfig(token=args.kie_token)
@@ -572,8 +590,9 @@ def main():
 
 
     print("\n===== INPUT SUMMARY =====")
-    print("Audio:", audio_path)
-    print("Lyrics:", lyrics_path)
+    print("Audio:", str(audio_path) if audio_path else "(none)")
+    print("Lyrics:", str(lyrics_path) if lyrics_path else "(none)")
+    print("Description:", description if description else "(none)")
     print("Video:", str(video_path) if video_path else "(none)")
     print("Mood:", mood)
     print("Platforms:", list(selected.keys()))
@@ -655,7 +674,7 @@ def main():
                 mood=mood,
                 ml_pred=ml_pred,
                 audio_feat=audio_feat,
-                lyrics=lyrics
+                lyrics=(lyrics if lyrics else description)
             )
 
             # Include caption seed so LLM can refine it (optional)
@@ -752,9 +771,9 @@ def main():
             audio_style=args.audio_style,
         )
 
-        audio_for_platform = str(audio_path)
+        audio_for_platform = str(audio_path) if audio_path else ""
 
-        if args.remix:
+        if args.remix and audio_path and args.content_type == "music":
             src_bpm = audio_feat.get("bpm", 120.0)
             style = args.audio_style
 
@@ -788,6 +807,16 @@ def main():
             print(f"[AUDIO] style={style} -> {audio_for_platform}")
 
         # generate_videos_kie tetap import kalau mode normal
+        if args.skip_video_gen:
+            captions = creative.get("captions", [])
+            caption_final = captions[0]["text"] if captions else caption_seed or description
+            results[platform] = {
+                "best_video": str(video_path) if video_path else None,
+                "best_score": None,
+                "caption": caption_final,
+                "creative": creative,
+            }
+            continue
         if args.resume_from_kie:
             # load tasks.json and build videos list
 
@@ -866,7 +895,7 @@ def main():
                     "prompt": "Concatenated all segments",
                 }]
 
-        base_features["_target_text"] = (f"{platform}\n{args.mood}\n{caption_seed or ''}\n{args.audio_style or ''}\n{lyrics[:2000]}")
+    base_features["_target_text"] = (f"{platform}\n{args.mood}\n{caption_seed or ''}\n{args.audio_style or ''}\n{(lyrics or description)[:2000]}")
 
         # Re-score generated videos and pick best
         best_video, best_score = select_best(videos, scorer, base_features)
