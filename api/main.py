@@ -39,11 +39,11 @@ def on_startup():
 
 
 @app.post("/auth/login", response_model=Token)
-def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == username).first()
+def login(email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    token = create_access_token({"sub": user.username, "role": user.role})
+    token = create_access_token({"sub": user.email, "role": user.role})
     return {"access_token": token, "token_type": "bearer"}
 
 
@@ -54,7 +54,7 @@ def bootstrap_admin(user_in: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).count() > 0:
         raise HTTPException(status_code=400, detail="Users already exist")
     user = User(
-        username=user_in.username,
+        email=user_in.email,
         password_hash=get_password_hash(user_in.password),
         role="admin",
     )
@@ -76,10 +76,10 @@ def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
 
 @app.post("/users", response_model=UserOut)
 def create_user(user_in: UserCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    if db.query(User).filter(User.username == user_in.username).first():
-        raise HTTPException(status_code=400, detail="Username already exists")
+    if db.query(User).filter(User.email == user_in.email).first():
+        raise HTTPException(status_code=400, detail="Email already exists")
     user = User(
-        username=user_in.username,
+        email=user_in.email,
         password_hash=get_password_hash(user_in.password),
         role=user_in.role,
     )

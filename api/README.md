@@ -36,7 +36,7 @@ Pastikan DB viral_studio sudah ada dan MySQL aktif di localhost (line 3306).
 
 curl -X POST http://localhost:8000/auth/bootstrap \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123","role":"admin"}'
+  -d '{"email":"admin@example.com","password":"admin123","role":"admin"}'
 Setelah itu, kamu bisa matikan ALLOW_BOOTSTRAP di .env.
 
 4) Start callback server (ngrok)
@@ -56,7 +56,7 @@ Buka http://localhost:5173.
 
 6) Login di frontend
 
-Username/password sesuai admin di step 3.
+Email/password sesuai admin di step 3.
 7) Submit job
 
 Upload audio + lyrics (+ video optional)
