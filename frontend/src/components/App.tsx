@@ -1,0 +1,29 @@
+
+
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Login from "./users/LoginPage"
+import HomePage from "./HomePage"
+
+
+const Loading = () => <p>Loading...</p>;
+
+const App = () => {
+  console.log("APP TSX RENDERED");
+
+  return (
+    <>
+      <div className="min-vh-100 bg-white" style={{ overflowY: "hidden" }}>
+        <React.Suspense fallback={<Loading />}>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/home" element={<HomePage />} />
+          </Routes>
+        </React.Suspense>
+      </div>
+    </>
+  );
+};
+
+export default App;
