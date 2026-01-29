@@ -61,17 +61,38 @@ def detect_themes(text: str) -> list[str]:
 
 def main():
     rows = []
-    with DATA_PATH.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+    # Try utf-8 first, fallback to cp1252/latin-1 for messy CSVs
+    encodings = ["utf-8", "cp1252", "latin-1"]
+    f = None
+    for enc in encodings:
+        try:
+            f = DATA_PATH.open("r", encoding=enc)
+            header = f.readline()
+            f.seek(0)
+            delimiter = ";" if ";" in header else ","
+            reader = csv.DictReader(f, delimiter=delimiter)
+            break
+        except UnicodeDecodeError:
+            if f:
+                f.close()
+            f = None
+            continue
+    if f is None:
+        raise RuntimeError("Failed to decode CSV with utf-8/cp1252/latin-1")
+    with f:
         for r in reader:
             views = r.get("views") or ""
             views_num = int(views) if views else parse_views(r.get("views_text", ""))
             rows.append({
                 "platform": r.get("platform", "").strip(),
-                "text": r.get("text", "").strip(),
+                "text": (r.get("text") or r.get("caption") or "").strip(),
                 "url": r.get("url", "").strip(),
                 "views_text": r.get("views_text", "").strip(),
                 "views": views_num,
+                "likes": int((r.get("Likes") or "0").replace(",", "") or 0),
+                "comments": int((r.get("Comments") or "0").replace(",", "") or 0),
+                "shares": int((r.get("Shares") or "0").replace(",", "") or 0),
+                "hashtags": (r.get("Hashtag") or "").strip(),
             })
 
     token_counts = Counter()
@@ -88,6 +109,13 @@ def main():
         for th in themes:
             theme_counts[th] += 1
             theme_views[th].append(r["views"])
+
+    engagement = []
+    for r in rows:
+        if r["views"] > 0:
+            eng = (r["likes"] + r["comments"] + r["shares"]) / r["views"]
+            engagement.append(eng)
+    avg_engagement = float(sum(engagement) / max(1, len(engagement)))
 
     top_words = token_counts.most_common(20)
     top_bigrams = bigram_counts.most_common(15)
@@ -108,18 +136,20 @@ def main():
         "top_words": top_words,
         "top_bigrams": top_bigrams,
         "themes": theme_summary,
+        "avg_engagement_rate": round(avg_engagement, 6),
     }
 
     (OUT_DIR / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    templates = [
-        "🔥 {artist} diumumkan tampil di {event} — siap live pertama kalinya!",
-        "Makin mendunia! {artist} diperkenalkan di {media} luar negeri.",
-        "Candu banget lihat {member} di bagian ini 😍",
-        "{song} resmi jadi soundtrack {franchise} — hype maksimal.",
-        "Reaksi pertama kali dengar {song}: {reaction}",
+    inspirations = [
+        "Buka dengan hook singkat + nama artis/lagu, lanjut konteks penting (event/rilis).",
+        "Highlight momen spesifik: bagian dance/pose/line yang bikin candu.",
+        "Tekankan capaian global: tampil di event besar, media luar, kolaborasi.",
+        "Gunakan kata kerja kuat: diumumkan, resmi, diperkenalkan, debut.",
+        "Akhiri dengan CTA ringan/hashtag relevan (tanpa harus selalu sama).",
     ]
-    (OUT_DIR / "templates.txt").write_text("\n".join(templates), encoding="utf-8")
+    note = "Catatan: ini inspirasi, bukan template wajib. Pakai fleksibel sesuai konten."
+    (OUT_DIR / "templates.txt").write_text(note + "\n\n" + "\n".join(inspirations), encoding="utf-8")
 
     feature_keywords = {
         "announcement": THEME_KEYWORDS["announcement"],
