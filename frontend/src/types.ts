@@ -18,3 +18,8 @@ export const platformOptions = [
   { value: 'youtube_short', label: 'Youtube Short' },
   { value: 'youtube_video', label: 'Youtube Video' }
 ]
+
+export type selectOptions={
+  value:string;
+  label:string
+}

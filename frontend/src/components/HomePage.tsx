@@ -2,11 +2,10 @@ import React, { useState, useRef, useEffect } from "react";
 import NavbarPage from "./Navbar";
 import swal from "sweetalert";
 import { useNavigate } from "react-router-dom";
-import { audioStyles, Job, moodOptions, platformOptions } from "../types";
+import { audioStyles, Job, moodOptions, platformOptions, selectOptions } from "../types";
 import Select from "react-select";
 import CreateService from "./service/CreateService";
 const HomePage = () => {
-    const [loading, setLoading] = useState<boolean>(true)
     const [lyricSelection, setLyricSelection] = useState("uploadLyric")
     const [description, setDescription] = useState<string>("")
     const [lyrics, setLyrics] = useState<File | string | null>(null)
@@ -67,7 +66,8 @@ const HomePage = () => {
         const isDataValidate = validationData()
         if (isDataValidate) {
             const formData = new FormData();
-            formData.append("platforms", platforms.join());
+            let platformValue = platforms.map((p: selectOptions) => p.value)
+            formData.append("platforms", platformValue.join(','));
             formData.append("mood", mood);
             formData.append("content_type", contentType);
             if (contentType == "general") {
@@ -93,10 +93,9 @@ const HomePage = () => {
 
     }
     useEffect(() => {
-        setLoading(false)
     }, []);
     return (
-        !loading && (
+        
             <div className="container-fluid bg-white">
                 <div className="row">
                     <div
@@ -232,7 +231,7 @@ const HomePage = () => {
                                                     <input
                                                         type="checkbox"
                                                         checked={remix}
-                                                        onChange={(e) => setRemix(!remix)}
+                                                        onChange={(e) => setRemix(e.target.checked)}
                                                     />
                                                     Remix audio
                                                 </label>
@@ -270,12 +269,12 @@ const HomePage = () => {
                                             </div>
                                             <div className="col">
                                                 <div>
-                                                    <input type="radio" name="lyric" value="uploadLyric" checked={lyricSelection == "uploadLyric" ? true : false} onClick={(e) => { setLyricSelection('uploadLyric') }} />
+                                                    <input type="radio" name="lyric" value="uploadLyric" checked={lyricSelection == "uploadLyric" ? true : false} onChange={(e) => { setLyricSelection('uploadLyric') }} />
                                                     <label onClick={(e) => { setLyricSelection('uploadLyric'); setLyrics(null) }}>Upload txt</label>
                                                 </div>
 
                                                 <div>
-                                                    <input type="radio" name="lyric" value="pasteLyric" checked={lyricSelection == "pasteLyric" ? true : false} onClick={(e) => { setLyricSelection('pasteLyric') }} />
+                                                    <input type="radio" name="lyric" value="pasteLyric" checked={lyricSelection == "pasteLyric" ? true : false} onChange={(e) => { setLyricSelection('pasteLyric') }} />
                                                     <label onClick={(e) => { setLyricSelection('pasteLyric'); setLyrics("") }}>Copy and paste</label>
                                                 </div>
                                             </div>
@@ -290,7 +289,6 @@ const HomePage = () => {
 
                                                     <input type="file" hidden accept=".txt, text/plain" id="lyric-upload" onChange={(event) => {
                                                         const files = event.target.files;
-                                                        console.log(files)
                                                         if (!files || files.length === 0) return;
 
                                                         const file = files[0];
@@ -323,7 +321,7 @@ const HomePage = () => {
                     </div>
                 </div>
             </div>
-        )
+        
     );
 };
 export default HomePage;
