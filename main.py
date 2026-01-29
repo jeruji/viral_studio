@@ -30,6 +30,7 @@ from audio_remix.presets import (
 )
 import subprocess
 from pipeline.generate_video import generate_videos_kie_simulate
+import cv2
 
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "outputs"))
 
@@ -184,6 +185,82 @@ def _probe_video_params(path: str) -> tuple[int, int, float] | None:
         )
     except Exception:
         return None
+
+def _pick_best_segment_start(video_path: str, target_dur: float, sample_every_n_frames: int = 5) -> float:
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return 0.0
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    duration_sec = frame_count / fps if fps > 0 else 0.0
+    if duration_sec <= target_dur or target_dur <= 0:
+        cap.release()
+        return 0.0
+
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+
+    sec_bins = int(duration_sec) + 2
+    motion = [0.0] * sec_bins
+    faces = [0] * sec_bins
+    prev_gray = None
+    idx = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        idx += 1
+        if idx % sample_every_n_frames != 0:
+            continue
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+        sec = int(t)
+        if prev_gray is not None:
+            diff = cv2.absdiff(gray, prev_gray)
+            motion[sec] += float(cv2.mean(diff)[0])
+        prev_gray = gray
+        fs = face_cascade.detectMultiScale(gray, 1.1, 4)
+        if len(fs) > 0:
+            faces[sec] += 1
+
+    cap.release()
+
+    window = max(1, int(target_dur))
+    best_start = 0
+    best_score = -1.0
+    for s in range(0, max(1, sec_bins - window)):
+        mot = sum(motion[s:s + window])
+        fac = sum(faces[s:s + window])
+        score = mot + (fac * 50.0)
+        if score > best_score:
+            best_score = score
+            best_start = s
+    return float(best_start)
+
+def _trim_video_best(video_path: str, target_dur: float, out_path: str) -> str:
+    start = _pick_best_segment_start(video_path, target_dur)
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", f"{start:.2f}",
+        "-t", f"{target_dur:.2f}",
+        "-i", video_path,
+        "-c:v", "libx264",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-movflags", "+faststart",
+        out_path,
+    ]
+    print("[FFMPEG]", " ".join(cmd))
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(
+            "ffmpeg trim failed\n"
+            f"STDOUT:\n{p.stdout}\n\nSTDERR:\n{p.stderr}"
+        )
+    return out_path
     if p.returncode != 0:
         return None
     try:
@@ -810,8 +887,17 @@ def main():
         if args.skip_video_gen:
             captions = creative.get("captions", [])
             caption_final = captions[0]["text"] if captions else caption_seed or description
+            best_vid = str(video_path) if video_path else None
+            if video_path:
+                target_dur = int(profile.get("duration", [15, 20])[1])
+                dur = _probe_duration_sec(str(video_path)) or 0.0
+                if dur > target_dur:
+                    out_dir = OUTPUT_DIR / "trimmed"
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    out_path = out_dir / f"{platform}_best.mp4"
+                    best_vid = _trim_video_best(str(video_path), float(target_dur), str(out_path))
             results[platform] = {
-                "best_video": str(video_path) if video_path else None,
+                "best_video": best_vid,
                 "best_score": None,
                 "caption": caption_final,
                 "creative": creative,
