@@ -9,8 +9,6 @@ import HomePage from "./HomePage"
 const Loading = () => <p>Loading...</p>;
 
 const App = () => {
-  console.log("APP TSX RENDERED");
-
   return (
     <>
       <div className="min-vh-100 bg-white" style={{ overflowY: "hidden" }}>

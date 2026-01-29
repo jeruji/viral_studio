@@ -12,4 +12,9 @@ export type Job = {
 
 export const moodOptions = ["happy", "hype", "sad", "mellow", "nostalgic"];
 export const audioStyles = ["jedag_jedug", "tiktok_house", "mellow_rainy", "cinematic_epic", "lofi_chill"];
-export const platformOptions = ["tiktok","instagram", "youtube_short","youtube_video"];
+export const platformOptions = [
+  { value: 'tiktok', label: 'Tiktok' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'youtube_short', label: 'Youtube Short' },
+  { value: 'youtube_video', label: 'Youtube Video' }
+]
