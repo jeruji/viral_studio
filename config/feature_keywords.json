@@ -1,0 +1,9 @@
+{
+  "announcement": ["umumkan", "siap rilis", "rilis", "announce", "released"],
+  "achievement": ["resmi", "pengisi", "anthem", "world championship", "tampil", "perdana"],
+  "global": ["amerika", "dunia", "global", "international", "world"],
+  "reaction": ["reaction", "reacts", "reactions", "reaksi"],
+  "dance": ["ngedance", "dance", "dancer", "choreo", "gerak"],
+  "song": ["lagu", "track", "soundtrack", "single"],
+  "profile": ["profil", "member"]
+}
