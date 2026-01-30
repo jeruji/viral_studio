@@ -20,6 +20,11 @@ export default function NavbarPage() {
       },
     },
     {
+      title: "List Jobs",
+      icon: "/images/clipboard-list.svg",
+      action: () => navigate("/list-jobs"),
+    },
+    {
       title: "List User",
       icon: "/images/icon-user-blue.svg",
       action: () => navigate("/list-user"),
@@ -97,23 +102,17 @@ export default function NavbarPage() {
           className="d-flex justify-content-center gap-4 flex-grow-1"
           style={{ textAlign: "center" }}
         >
-          <img
-            className="cursor-pointer menu-icon"
-            src="/images/Home-icon.svg"
-            alt="Home"
-            style={{ height: "26px" }}
-            onClick={() => {
-              navigate("/home");
-              navigate(0);
-            }}
-          />
-          <img
-            className="cursor-pointer menu-icon"
-            src="/images/icon-user-blue.svg"
-            alt="User"
-            style={{ height: "26px" }}
-            onClick={() => navigate("/list-user")}
-          />
+          {menuItems.map((item) => {
+            return (
+              <img
+                className="cursor-pointer menu-icon"
+                src={item.icon}
+                onClick={item.action}
+                alt="Home"
+                style={{ height: "26px" }}
+              />
+            )
+          })}
         </div>
 
         <div style={{ flex: "0 0 auto" }}>

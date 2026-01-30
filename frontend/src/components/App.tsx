@@ -3,7 +3,8 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "./users/LoginPage"
-import HomePage from "./HomePage"
+import HomePage from "./jobs/HomePage"
+import ListJobs from "./jobs/listJobs";
 
 
 const Loading = () => <p>Loading...</p>;
@@ -17,6 +18,7 @@ const App = () => {
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/home" element={<HomePage />} />
+            <Route path="/list-jobs" element={<ListJobs />} />
           </Routes>
         </React.Suspense>
       </div>
