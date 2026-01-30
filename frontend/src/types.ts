@@ -23,3 +23,10 @@ export type selectOptions={
   value:string;
   label:string
 }
+
+export type userType={
+  email:string;
+  name:string;
+  role:string;
+  created_at:string;
+}

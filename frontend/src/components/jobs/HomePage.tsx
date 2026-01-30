@@ -89,7 +89,7 @@ const HomePage = () => {
                 refreshJobs()
                 // swal("Content", "Success create new content", "success")
             }).catch((err) => {
-                swal("Content", "Failed create new content", "danger")
+                swal("Content", "Failed create new content", "error")
 
             })
         }
@@ -101,7 +101,6 @@ const HomePage = () => {
         setLoadingJobs(true);
         try {
             await RetrieveService.retrieveJobs().then((res:any) => {
-                console.log(res)
                 setJobs(res)
                 setLoadingJobs(false)
             })

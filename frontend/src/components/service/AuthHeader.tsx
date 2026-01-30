@@ -1,3 +1,5 @@
+import RetrieveService from "./RetrieveService";
+
 export const authHeader = () => {
     const userStr = localStorage.getItem("user");
     if (!userStr) return {};
@@ -11,3 +13,7 @@ export const authHeader = () => {
         return {};
     }
 };
+
+export const getCurrentUserInfo = () => {
+    return RetrieveService.retrieveCurrentUser().then(res => res).catch((err) => { throw new Error("Failed to load user info"); })
+}

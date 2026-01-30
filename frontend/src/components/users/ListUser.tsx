@@ -1,24 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import RetrieveService from "../service/RetrieveService";
-import { Job } from "../../types";
+import { Job, userType } from "../../types";
 import NavbarPage from "../Navbar";
-const ListJobs = () => {
+import { useNavigate } from "react-router-dom";
+const ListUsers = () => {
     const [loading, setLoading] = useState<boolean>(true)
-    const [jobs, setJobs] = useState<Job[]>([])
-    useEffect(() => { getAllJobs() }, [])
+    const [users, setUsers] = useState<userType[]>([])
+    const navigate = useNavigate()
+    useEffect(() => { getUsers(); setLoading(false) }, [])
 
-
-    async function getAllJobs() {
-        try {
-            await RetrieveService.retrieveJobs().then((res: any) => {
-                setJobs(res)
-            })
-
-        } catch (err) {
-            swal("Jobs", "Failed retrieve jobs", "error")
-        } finally {
-            setLoading(false);
-        }
+    const getUsers = () => {
+        RetrieveService.retrieveUsers().then((res) => {
+            setUsers(res)
+        }).catch((err) => {
+            swal("Users", "Failed to load users", "error")
+        })
     }
     return (
         !loading &&
@@ -44,7 +40,12 @@ const ListJobs = () => {
                                 style={{ borderBottom: "1px solid black" }}
                             >
                                 <div className="col-5 p-0 m-0 d-flex align-items-center">
-                                    <h3 className="font-mixta-sharp">List Jobs</h3>
+                                    <h3 className="font-mixta-sharp">List Users</h3>
+                                </div>
+                                <div className="col p-0 m-0 text-end">
+                                    <button className="btn btn-active" onClick={(e) => {
+                                        navigate("/create-user")
+                                    }}>+ Create user</button>
                                 </div>
                             </div>
                             <div className="row py-2">
@@ -53,22 +54,20 @@ const ListJobs = () => {
                                         <table className="table w-100 table-rounded">
                                             <thead>
                                                 <tr className="text-center">
-                                                    <th>Id</th>
-                                                    <th>Status</th>
-                                                    <th>Created</th>
-                                                    <th>Meesage</th>
-                                                    <th>Output</th>
+                                                    {/* <th>Name</th> */}
+                                                    <th>Email</th>
+                                                    <th>Role</th>
+                                                    <th></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {jobs.map((j, indexJ) => {
+                                                {users.map((u, indexU) => {
                                                     return (
                                                         <tr className="text-center">
-                                                            <td>{j.id}</td>
-                                                            <td>{j.status}</td>
-                                                            <td>{j.created_at}</td>
-                                                            <td>{j.error_message}</td>
-                                                            <td>{j.log_path}</td>
+                                                            {/* <td>{"name"}</td> */}
+                                                            <td>{u.email}</td>
+                                                            <td>{u.role}</td>
+                                                            <td>{ }</td>
                                                         </tr>
                                                     )
                                                 })}
@@ -86,4 +85,4 @@ const ListJobs = () => {
     )
 }
 
-export default ListJobs;
+export default ListUsers;

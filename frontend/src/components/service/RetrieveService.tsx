@@ -22,7 +22,30 @@ const retrieveJobs = () => {
             redirectToLogin(response.message);
         });
 };
+const retrieveUsers = () => {
+    return axios
+        .get(`${API_URL}/users`, { headers: authHeader() })
+        .then((response) => {
+            return response.data
+        })
+        .catch((response) => {
+            redirectToLogin(response.message);
+        });
+};
+
+const retrieveCurrentUser = () => {
+    return axios
+        .get(`${API_URL}/users/me`, { headers: authHeader() })
+        .then((response) => {
+            return response.data
+        })
+        .catch((response) => {
+            redirectToLogin(response.message);
+        });
+};
 
 export default {
-    retrieveJobs
+    retrieveJobs,
+    retrieveUsers,
+    retrieveCurrentUser
 }

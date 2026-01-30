@@ -1,12 +1,22 @@
 @use "bootstrap/scss/bootstrap.scss";
 @import url("https://use.typekit.net/jwi6adf.css");
-
-$color-almost-white: #f5f5f5;
+@import url("https://use.typekit.net/zzm3kcc.css");
+@import url("https://use.typekit.net/jwi6adf.css");
 $bg-black: #272727;
 $almost-black: #606060;
-$blue-gdp: #004687;
-$color-gray: #868686;
+$white: #ffffff;
+$btn-blue: #00a0dd;
+$btn-cyan: #7ccc91;
 $text-blue: #008fd7;
+$color-black: #020202;
+$table-grey: #595959;
+$color-gray: #868686;
+$color-red: #ef4136;
+$color-yellow: #fbb040;
+$color-blue: #35bdb4;
+$color-almost-white: #e1e1e1;
+$bg-almost-white: #f5f5f5;
+$blue-gdp: #004687;
 
 @font-face {
   font-family: "Mixta-Sharp";
@@ -43,6 +53,14 @@ $text-blue: #008fd7;
   background-color: $color-almost-white;
 }
 
+.input-white {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #ffffff
+}
+
 .color-radius {
   border-radius: 8px;
 }
@@ -52,6 +70,7 @@ $text-blue: #008fd7;
   border-radius: 8px;
   outline: none;
   border: 1px solid #ccc;
+  padding: 10px;
 }
 
 .label-main {
@@ -120,7 +139,7 @@ $text-blue: #008fd7;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid #eaeaea;
+  border-right: 1px solid #3a1818;
 }
 
 .menu-icon {
@@ -151,11 +170,14 @@ $text-blue: #008fd7;
   height: 30px;
   background-color: $color-almost-white;
   cursor: pointer;
+  padding: 10px;
 }
-.input-130{
+
+.input-130 {
   min-width: 130px;
   width: 130px;
 }
+
 .input-none {
   all: unset;
 }
@@ -218,9 +240,10 @@ textarea {
   border: 1px solid #000000;
 }
 
-.react-select-inside__single-value{
+.react-select-inside__single-value {
   color: $color-gray !important;
 }
+
 .react-select__indicator-separator,
 .react-select-inside__indicator-separator,
 .react-select-inside-sort__indicator-separator {
@@ -244,14 +267,16 @@ textarea {
 .react-select-inside-sort_menu {
   max-height: 250px !important;
 }
+
 .react-select-inside__value-container {
   padding-right: 0 !important;
 }
+
 .react-select-inside-sort__control {
   border: 1px solid var(--outline-stroke, $almost-black) !important;
   border-radius: 8px !important;
   color: #8c8ca1 !important;
-  box-shadow: none !important; 
+  box-shadow: none !important;
   font-size: 14px;
   font-family: "gotham";
   width: 50%;
@@ -268,6 +293,7 @@ textarea {
   margin-bottom: auto;
   padding-top: 0 !important;
 }
+
 .react-select-inside-sort__indicators {
   margin-top: 0;
   margin-bottom: auto;
@@ -299,8 +325,72 @@ textarea {
 }
 
 .table-wrapper {
-  max-height: 300px;          /* controls scroll height */
+  max-height: 300px;
+  /* controls scroll height */
   overflow-y: scroll;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
+}
+
+.deleteButton:hover {
+  background-color: $color-red !important;
+  border: 1px solid transparent;
+  color: white;
+}
+
+.deleteButton {
+  background-color: $bg-almost-white;
+  border-radius: 10px;
+  border: 1px solid var(--outline-stroke, $almost-black);
+  height: 32px;
+  color: $color-black;
+  font-size: 14px;
+  font-family: "gotham";
+  line-height: 0px;
+}
+
+.btn-active,
+.btn-active-disable {
+  background-color: $btn-blue;
+  border-radius: 10px;
+  border: none;
+  color: $color-black;
+  height: 32px;
+  border: 1px solid var(--outline-stroke, $almost-black);
+  font-size: 14px;
+  font-family: "gotham";
+  line-height: 0px;
+}
+
+.btn-active:hover {
+  background-color: #007eb0 !important;
+  border-radius: 10px;
+  border: none;
+  color: $bg-almost-white;
+  height: 32px;
+  border: 1px solid var(--outline-stroke, $almost-black);
+  font-size: 14px;
+  font-family: "gotham";
+  line-height: 0px;
+}
+
+.btn-inactive {
+
+  background-color: $bg-almost-white;
+  border-radius: 10px;
+  border: none;
+  color: $color-black;
+  height: 32px;
+  border: 1px solid var(--outline-stroke, $almost-black);
+  font-size: 14px;
+  font-family: "gotham";
+  line-height: 0px;
+}
+
+.btn-inactive:hover {
+  background-color: $almost-black;
+  border-radius: 10px;
+  border: 1px solid $almost-black;
+  color: $bg-almost-white;
+  line-height: 0px;
 }

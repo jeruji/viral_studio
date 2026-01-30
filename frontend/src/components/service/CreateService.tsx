@@ -36,7 +36,19 @@ const createJob = (data: FormData) => {
         });
 };
 
+const createUser = (email:string, password:string, role:string) => {
+    return axios
+        .post(`${API_URL}/users`, {email:email, password:password, role:role}, { headers: authHeader() })
+        .then((response) => {
+            return response.data;
+        })
+        .catch((response) => {
+            redirectToLogin(response.message);
+        });
+};
+
 export default {
     login,
-    createJob
+    createJob,
+    createUser
 }
