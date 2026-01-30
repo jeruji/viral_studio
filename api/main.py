@@ -92,8 +92,10 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db), _: User = De
 @app.get("/jobs", response_model=list[JobOut])
 def list_jobs(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     if current.role == "admin":
-        return db.query(Job).order_by(Job.id.desc()).all()
-    return db.query(Job).filter(Job.user_id == current.id).order_by(Job.id.desc()).all()
+        jobs = db.query(Job).order_by(Job.id.desc()).all()
+    else:
+        jobs = db.query(Job).filter(Job.user_id == current.id).order_by(Job.id.desc()).all()
+    return [_job_payload(job) for job in jobs]
 
 
 @app.get("/jobs/{job_id}", response_model=JobOut)
@@ -103,7 +105,7 @@ def get_job(job_id: int, db: Session = Depends(get_db), current: User = Depends(
         raise HTTPException(status_code=404, detail="Job not found")
     if current.role != "admin" and job.user_id != current.id:
         raise HTTPException(status_code=403, detail="Forbidden")
-    return job
+    return _job_payload(job)
 
 
 def _run_pipeline(job_id: int, params: dict, input_paths: dict):
@@ -233,3 +235,37 @@ def create_job(
 
     background.add_task(_run_pipeline, job.id, params, inputs)
     return job
+
+
+@app.get("/jobs/{job_id}/result")
+def get_job_result(job_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if current.role != "admin" and job.user_id != current.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not job.report_path:
+        raise HTTPException(status_code=404, detail="Report not ready")
+    report = Path(job.report_path)
+    if not report.exists():
+        raise HTTPException(status_code=404, detail="Report file missing")
+    try:
+        return json.loads(report.read_text(encoding="utf-8"))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to read report")
+def _load_report_json(job: Job) -> Optional[dict]:
+    if not job.report_path:
+        return None
+    report = Path(job.report_path)
+    if not report.exists():
+        return None
+    try:
+        return json.loads(report.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _job_payload(job: Job) -> dict:
+    data = JobOut.model_validate(job).model_dump()
+    data["report_json"] = _load_report_json(job)
+    return data

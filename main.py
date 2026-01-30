@@ -156,6 +156,23 @@ def _coerce_video_path(video_obj):
             return str(fallback)
     raise TypeError(f"video_obj must be path-like or dict with path/final_path/taskId, got {type(video_obj).__name__}")
 
+def _hashtags_from_text(text_in: str, max_tags: int = 6) -> list[str]:
+    text = re.sub(r"[^a-zA-Z0-9\s]", " ", (text_in or "").lower())
+    words = [w for w in text.split() if len(w) > 2]
+    stop = {
+        "dan", "yang", "dengan", "untuk", "dari", "pada", "ini", "itu", "atau", "the",
+        "and", "with", "for", "from", "this", "that", "your", "you", "kami", "kamu",
+        "video", "music", "musik", "sound", "soundtrack", "official"
+    }
+    seen = []
+    for w in words:
+        if w in stop or w in seen:
+            continue
+        seen.append(w)
+        if len(seen) >= max_tags:
+            break
+    return [f"#{w}" for w in seen]
+
 def _probe_duration_sec(path: str) -> float | None:
     try:
         p = subprocess.run(
@@ -659,11 +676,17 @@ def main():
     # ====== Init LLM + KIE ======
     llm = None
     kie = None
-    if not args.resume_from_kie and not args.skip_video_gen:
-        llm = GPT52Client(api_key=args.openai_key)
-        kie = KieVeoClient(
-            KieConfig(token=args.kie_token)
-        )
+    if not args.resume_from_kie:
+        openai_key = args.openai_key or os.getenv("OPENAI_API_KEY")
+        if openai_key:
+            llm = GPT52Client(api_key=openai_key)
+        else:
+            print("[WARN] OpenAI API key not set; captions/prompts will use fallback.")
+
+        if not args.skip_video_gen:
+            kie = KieVeoClient(
+                KieConfig(token=args.kie_token)
+            )
 
 
     print("\n===== INPUT SUMMARY =====")
@@ -751,13 +774,40 @@ def main():
                 mood=mood,
                 ml_pred=ml_pred,
                 audio_feat=audio_feat,
-                lyrics=(lyrics if lyrics else description)
+                lyrics=lyrics,
+                description=description,
+                content_type=args.content_type
             )
 
             # Include caption seed so LLM can refine it (optional)
             brief["caption_seed"] = caption_seed
 
-            creative = generate_creative(llm, brief)
+            if llm is None:
+                print("[WARN] LLM not initialized; using fallback creative prompts.")
+                creative = {}
+            else:
+                creative = generate_creative(llm, brief)
+
+            if args.content_type == "general":
+                creative.pop("lyrics_insight", None)
+                creative.pop("storyboard", None)
+                creative.pop("sora_prompts", None)
+                creative.pop("video_prompts", None)
+                # Force hashtags from lyrics if present, otherwise from description.
+                base_tag_text = lyrics if lyrics else description
+                tags = _hashtags_from_text(base_tag_text)
+                if tags:
+                    captions = creative.get("captions") or []
+                    if isinstance(captions, dict):
+                        captions = [captions]
+                    if not captions:
+                        captions = [{"text": caption_seed or description, "hashtags": tags, "cta": ""}]
+                    else:
+                        for c in captions:
+                            if isinstance(c, dict):
+                                if not c.get("hashtags"):
+                                    c["hashtags"] = tags
+                    creative["captions"] = captions
 
         # Merge sora_prompts into video_prompts for a richer prompt pool
         vp = creative.get("video_prompts") or []
@@ -981,7 +1031,9 @@ def main():
                     "prompt": "Concatenated all segments",
                 }]
 
-    base_features["_target_text"] = (f"{platform}\n{args.mood}\n{caption_seed or ''}\n{args.audio_style or ''}\n{(lyrics or description)[:2000]}")
+        base_features["_target_text"] = (
+            f"{platform}\n{args.mood}\n{caption_seed or ''}\n{args.audio_style or ''}\n{(lyrics or description)[:2000]}"
+        )
 
         # Re-score generated videos and pick best
         best_video, best_score = select_best(videos, scorer, base_features)
@@ -1013,9 +1065,9 @@ def main():
         captions = creative.get("captions", [])
         caption_final = captions[0]["text"] if captions else caption_seed
 
-        print("✔ Best video:", best_video)
-        print("✔ Best score:", round(best_score, 2))
-        print("✔ Caption:", caption_final)
+        print("Best video:", best_video)
+        print("Best score:", round(best_score, 2))
+        print("Caption:", caption_final)
 
         results[platform] = {
             "best_video": best_video,
@@ -1030,8 +1082,11 @@ def main():
     report_path = out_dir / "run_report.json"
     report_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print("\n✅ Done. Report saved to:", report_path)
+    print("\nDone. Report saved to:", report_path)
 
 
 if __name__ == "__main__":
     main()
+
+
+

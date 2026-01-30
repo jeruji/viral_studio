@@ -32,6 +32,7 @@ class JobOut(BaseModel):
     inputs_json: str | None
     log_path: str | None
     report_path: str | None
+    report_json: dict | None = None
     error_message: str | None
     created_at: datetime
     updated_at: datetime
