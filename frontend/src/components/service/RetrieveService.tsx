@@ -44,8 +44,19 @@ const retrieveCurrentUser = () => {
         });
 };
 
+const retrieveResultJobsById=(job_id:string)=>{
+    return axios.get(`${API_URL}/jobs/${job_id}/result`, { headers: authHeader() })
+        .then((response) => {
+            return response.data
+        })
+        .catch((response) => {
+            redirectToLogin(response.message);
+        });
+}
+
 export default {
     retrieveJobs,
     retrieveUsers,
-    retrieveCurrentUser
+    retrieveCurrentUser,
+    retrieveResultJobsById
 }

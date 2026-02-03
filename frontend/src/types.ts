@@ -19,14 +19,28 @@ export const platformOptions = [
   { value: 'youtube_video', label: 'Youtube Video' }
 ]
 
-export type selectOptions={
-  value:string;
-  label:string
+export type selectOptions = {
+  value: string;
+  label: string
 }
 
-export type userType={
-  email:string;
-  name:string;
-  role:string;
-  created_at:string;
+export type userType = {
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
 }
+
+export type reportJob = {
+  id: number;
+  status: string;
+  params_json: any;
+  input_json: any;
+  log_path: string;
+  report_path: string;
+  report_json: any;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string
+}
+

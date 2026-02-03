@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import RetrieveService from "../service/RetrieveService";
-import { Job } from "../../types";
+import { Job, reportJob } from "../../types";
 import NavbarPage from "../Navbar";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "react-bootstrap";
 const ListJobs = () => {
     const [loading, setLoading] = useState<boolean>(true)
-    const [jobs, setJobs] = useState<Job[]>([])
+    const [jobs, setJobs] = useState<reportJob[]>([])
+    const [detailJob, setDetailJob] = useState<reportJob>()
+    const [modalOpen, setModalOpen] = useState<boolean>(false)
+    const toggleModal = () => setModalOpen(!modalOpen);
     useEffect(() => { getAllJobs() }, [])
 
 
@@ -58,17 +62,19 @@ const ListJobs = () => {
                                                     <th>Created</th>
                                                     <th>Meesage</th>
                                                     <th>Output</th>
+                                                    <th>Detail</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {jobs.map((j, indexJ) => {
                                                     return (
-                                                        <tr className="text-center">
-                                                            <td>{j.id}</td>
-                                                            <td>{j.status}</td>
-                                                            <td>{j.created_at}</td>
-                                                            <td>{j.error_message}</td>
-                                                            <td>{j.log_path}</td>
+                                                        <tr className="text-center" key={`item-${indexJ}`}>
+                                                            <td className={`${j.status == "success" ? "success" : j.status == "failed" ? "failed" : "running"}`}>{j.id}</td>
+                                                            <td className={`${j.status == "success" ? "success" : j.status == "failed" ? "failed" : "running"}`}>{j.status}</td>
+                                                            <td className={`${j.status == "success" ? "success" : j.status == "failed" ? "failed" : "running"}`}>{j.created_at}</td>
+                                                            <td className={`${j.status == "success" ? "success" : j.status == "failed" ? "failed" : "running"}`}>{j.error_message}</td>
+                                                            <td className={`${j.status == "success" ? "success" : j.status == "failed" ? "failed" : "running"}`}>{j.log_path}</td>
+                                                            <td className={`${j.status == "success" ? "success" : j.status == "failed" ? "failed" : "running"}`} onClick={(e) => { setDetailJob(j); setModalOpen(true) }}><button className="btn btn-active">view</button></td>
                                                         </tr>
                                                     )
                                                 })}
@@ -79,6 +85,49 @@ const ListJobs = () => {
                             </div>
                         </div>
                         <div className="col-1"></div>
+                        {
+                            (modalOpen && detailJob) &&
+                            <Modal
+                                show={modalOpen}
+                                aria-labelledby="contained-modal-title-vcenter"
+                                centered={true}
+                                size="lg"
+                                onHide={toggleModal}
+                                backdrop="static"
+                                scrollable
+                            >
+                                <ModalHeader>
+                                    <p>Jobs id : {detailJob?.id}</p>
+                                </ModalHeader>
+                                <ModalBody>
+                                    {Object.entries(detailJob?.report_json).map(([platform, item]:any, indexResult:number) => {
+                                        const key = `${item}-${platform}`
+                                        return (
+                                            <div className={`py-3 ${indexResult!=0 && "border-top"}`}>
+                                                <h5><strong key={key}>{platform.split("_").join(" ").toUpperCase()}</strong></h5>
+                                                <p>
+                                                    <strong>Caption:</strong>{" "}
+                                                    {item.caption}
+                                                </p>
+                                                <p>
+                                                    <strong>Hashtags: {" "}</strong>
+                                                    {item['creative']['captions'][0]['hashtags'].join(", ")}
+                                                </p>
+                                                <p>
+                                                    <strong>Best Video: {" "}</strong>
+                                                    {item["best_video"]}
+                                                </p>
+                                            </div>
+                                        )
+                                    })}
+
+                                </ModalBody>
+                                <ModalFooter>
+                                    <button className="btn btn-active" onClick={toggleModal}>Close</button>
+                                </ModalFooter>
+                            </Modal>
+                        }
+
                     </div>
                 </div>
             </div>

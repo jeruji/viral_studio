@@ -102,12 +102,13 @@ export default function NavbarPage() {
           className="d-flex justify-content-center gap-4 flex-grow-1"
           style={{ textAlign: "center" }}
         >
-          {menuItems.map((item) => {
+          {menuItems.map((item, itemIndex) => {
             return (
               <img
                 className="cursor-pointer menu-icon"
                 src={item.icon}
                 onClick={item.action}
+                key={`mobile-${itemIndex}`}
                 alt="Home"
                 style={{ height: "26px" }}
               />

@@ -6,6 +6,9 @@ import { audioStyles, Job, moodOptions, platformOptions, selectOptions } from ".
 import Select from "react-select";
 import CreateService from "../service/CreateService";
 import RetrieveService from "../service/RetrieveService";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { getCurrentUserInfo } from "../service/AuthHeader";
 const HomePage = () => {
     const [lyricSelection, setLyricSelection] = useState("uploadLyric")
     const [description, setDescription] = useState<string>("")
@@ -21,6 +24,10 @@ const HomePage = () => {
     const [video, setVideo] = useState<File | null>(null);
     const [jobs, setJobs] = useState<any[]>([]);
     const [loadingJobs, setLoadingJobs] = useState<boolean>(false)
+    const [statusJobs, setStatusJobs] = useState<string>("not available")
+    const [jobId, setJobId] = useState<string>()
+    const [isActiveResult, setIsActiveResult] = useState<string>("result-0")
+    const navigate = useNavigate()
 
     const validationData = () => {
         const validateField = (fieldValue: string | number | any[] | boolean | File | null, fieldName: string) => {
@@ -65,54 +72,77 @@ const HomePage = () => {
         return true;
     }
     const handleSubmitJob = async () => {
-        const isDataValidate = validationData()
-        if (isDataValidate) {
+        const isDataValidate = validationData();
+        if (!isDataValidate) return;
+
+        try {
             const formData = new FormData();
-            let platformValue = platforms.map((p: selectOptions) => p.value)
-            formData.append("platforms", platformValue.join(','));
+            const platformValue = platforms.map((p: selectOptions) => p.value);
+
+            formData.append("platforms", platformValue.join(","));
             formData.append("mood", mood);
             formData.append("content_type", contentType);
-            if (contentType == "general") {
+
+            if (contentType === "general") {
                 formData.append("description", description);
             } else {
                 formData.append("remix", remix.toString());
                 formData.append("audio_style", audioStyle);
                 formData.append("clip_seg_sec", clipSegSec);
-                if (audio) { formData.append("audio", audio) }
-                if (lyrics) { formData.append("lyrics", lyrics) }
+                if (audio) formData.append("audio", audio);
+                if (lyrics) formData.append("lyrics", lyrics);
             }
 
-            if (video) { formData.append("video", video); }
+            if (video) formData.append("video", video);
 
-            await CreateService.createJob(formData).then((success) => {
-                setLoadingJobs(true)
-                refreshJobs()
-                // swal("Content", "Success create new content", "success")
-            }).catch((err) => {
-                swal("Content", "Failed create new content", "error")
+            const res = await CreateService.createJob(formData);
 
-            })
+            setLoadingJobs(true);
+            setStatusJobs(res.status);
+            setJobId(res.id);
+
+            swal({ title: "Content", "text": "Please wait until the result show . . .", timer: 5000 });
+        } catch (err) {
+            swal("Content", "Failed create new content", "error");
         }
+    };
 
+    useEffect(() => {
+        if (!jobId) return;
+        if (statusJobs !== "queued") return;
 
-    }
+        const intervalId = setInterval(() => {
+            refreshJobs(jobId);
+        }, 10000);
 
-    async function refreshJobs() {
+        return () => clearInterval(intervalId);
+    }, [statusJobs]);
+
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            try {
+                const userInfo = await getCurrentUserInfo();
+            } catch (err) {
+                navigate("/login")
+            }
+        };
+
+        fetchUserInfo();
+    }, [])
+
+    async function refreshJobs(id: string) {
         setLoadingJobs(true);
         try {
-            await RetrieveService.retrieveJobs().then((res:any) => {
-                setJobs(res)
+            await RetrieveService.retrieveResultJobsById(id).then((res: any) => {
+                if (res?.detail) { return }
+                setJobs([res])
+                setStatusJobs("done")
                 setLoadingJobs(false)
             })
-
         } catch (err) {
             setError("Gagal mengambil status job.");
-        } finally {
-            setLoadingJobs(false);
         }
     }
-    useEffect(() => {
-    }, []);
     return (
 
         <div className="container-fluid bg-white">
@@ -331,6 +361,65 @@ const HomePage = () => {
                             <div className="row py-3">
                                 <div className="col">
                                     <button className="btn btn-primary" onClick={handleSubmitJob}>Generate Content</button>
+                                </div>
+                            </div>
+                            <hr></hr>
+                            <div className="row">
+                                <div className="col">Result {loadingJobs && <FontAwesomeIcon icon={faSpinner} className="fa-spin" />}</div>
+                            </div>
+                            <div className="row py-3">
+                                <div className="col">
+                                    <div className="accordion">
+                                        {jobs.map((job, jIndex) =>
+                                            Object.keys(job).map((platform, pIndex) => {
+                                                const key = `${jIndex}-${platform}`
+
+                                                return (
+                                                    <div className="accordion-item" key={key}>
+                                                        <h2 className="accordion-header">
+                                                            <button
+                                                                className={`accordion-button ${isActiveResult == `result-${pIndex}` ? "" : "collapsed"}`}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (isActiveResult == `result-${pIndex}`) {
+                                                                        setIsActiveResult(`result-`)
+
+                                                                    } else {
+                                                                        setIsActiveResult(`result-${pIndex}`)
+                                                                    }
+                                                                }
+
+                                                                }
+                                                            >
+                                                                {platform.split("_").join(" ").toUpperCase()}
+                                                            </button>
+                                                        </h2>
+
+                                                        <div
+                                                            className={`accordion-collapse collapse ${isActiveResult == `result-${pIndex}` ? "show" : ""
+                                                                }`}
+                                                        >
+                                                            <div className="accordion-body">
+                                                                <p>
+                                                                    <strong>Caption:</strong>{" "}
+                                                                    {job[platform].caption}
+                                                                </p>
+                                                                <p>
+                                                                    <strong>Hashtags: {" "}</strong>
+                                                                    {job[platform]['creative']['captions'][0]['hashtags'].join(", ")}
+                                                                </p>
+                                                                <p>
+                                                                    <strong>Best Video: {" "}</strong>
+                                                                    {job[platform]["best_video"]}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
+                                    </div>
+
                                 </div>
                             </div>
 
