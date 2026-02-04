@@ -210,7 +210,7 @@ const HomePage = () => {
                                     >
                                         {moodOptions.map((m) => (
                                             <option key={m} value={m}>
-                                                {m}
+                                                {m.charAt(0).toUpperCase() + m.slice(1)}
                                             </option>
                                         ))}
                                     </select>
@@ -296,7 +296,7 @@ const HomePage = () => {
                                             >
                                                 {audioStyles.map((s) => (
                                                     <option key={s} value={s}>
-                                                        {s}
+                                                        {(s.charAt(0).toUpperCase() + s.slice(1)).split("_").join(" ")}
                                                     </option>
                                                 ))}
                                             </select>
@@ -378,7 +378,7 @@ const HomePage = () => {
                                                     <div className="accordion-item" key={key}>
                                                         <h2 className="accordion-header">
                                                             <button
-                                                                className={`accordion-button ${isActiveResult == `result-${pIndex}` ? "" : "collapsed"}`}
+                                                                className={`accordion-button bg-blue ${isActiveResult == `result-${pIndex}` ? "" : "collapsed"}`}
                                                                 type="button"
                                                                 onClick={() => {
                                                                     if (isActiveResult == `result-${pIndex}`) {

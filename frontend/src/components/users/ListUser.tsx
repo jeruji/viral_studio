@@ -55,15 +55,15 @@ const ListUsers = () => {
                                             <thead>
                                                 <tr className="text-center">
                                                     {/* <th>Name</th> */}
-                                                    <th>Email</th>
-                                                    <th>Role</th>
-                                                    <th></th>
+                                                    <th className="bg-blue">Email</th>
+                                                    <th className="bg-blue">Role</th>
+                                                    <th className="bg-blue"></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {users.map((u, indexU) => {
                                                     return (
-                                                        <tr className="text-center">
+                                                        <tr className="text-center" key={`user-${indexU}`}>
                                                             {/* <td>{"name"}</td> */}
                                                             <td>{u.email}</td>
                                                             <td>{u.role}</td>

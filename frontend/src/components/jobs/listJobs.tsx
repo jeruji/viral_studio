@@ -57,12 +57,12 @@ const ListJobs = () => {
                                         <table className="table w-100 table-rounded">
                                             <thead>
                                                 <tr className="text-center">
-                                                    <th>Id</th>
-                                                    <th>Status</th>
-                                                    <th>Created</th>
-                                                    <th>Meesage</th>
-                                                    <th>Output</th>
-                                                    <th>Detail</th>
+                                                    <th className="bg-blue">Id</th>
+                                                    <th className="bg-blue">Status</th>
+                                                    <th className="bg-blue">Created</th>
+                                                    <th className="bg-blue">Meesage</th>
+                                                    <th className="bg-blue">Output</th>
+                                                    <th className="bg-blue">Detail</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -103,8 +103,8 @@ const ListJobs = () => {
                                     {Object.entries(detailJob?.report_json).map(([platform, item]:any, indexResult:number) => {
                                         const key = `${item}-${platform}`
                                         return (
-                                            <div className={`py-3 ${indexResult!=0 && "border-top"}`}>
-                                                <h5><strong key={key}>{platform.split("_").join(" ").toUpperCase()}</strong></h5>
+                                            <div className={`py-3 ${indexResult!=0 && "border-top"}`}  key={key}>
+                                                <h5><strong>{platform.split("_").join(" ").toUpperCase()}</strong></h5>
                                                 <p>
                                                     <strong>Caption:</strong>{" "}
                                                     {item.caption}

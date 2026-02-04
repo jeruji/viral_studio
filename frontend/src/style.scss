@@ -1,7 +1,6 @@
 @use "bootstrap/scss/bootstrap.scss";
 @import url("https://use.typekit.net/jwi6adf.css");
 @import url("https://use.typekit.net/zzm3kcc.css");
-@import url("https://use.typekit.net/jwi6adf.css");
 $bg-black: #272727;
 $almost-black: #606060;
 $white: #ffffff;
@@ -315,17 +314,12 @@ textarea {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.table-rounded th {
-  background: #f9fafb;
-  font-weight: 600;
-}
-
 .table-rounded tr:last-child td {
   border-bottom: none;
 }
 
 .table-wrapper {
-  max-height: 300px;
+  max-height: 80vh;
   /* controls scroll height */
   overflow-y: scroll;
   border-radius: 8px;
@@ -406,3 +400,7 @@ textarea {
   background-color: #f7f8a2 !important;
 }
 
+.bg-blue{
+  background-color: $blue-gdp !important;
+  color: white !important;
+}
