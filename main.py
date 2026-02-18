@@ -35,6 +35,33 @@ import cv2
 
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "outputs"))
 
+GENRE_STYLE_CHOICES = [
+    "blues",
+    "classical",
+    "country",
+    "disco",
+    "hiphop",
+    "jazz",
+    "metal",
+    "pop",
+    "reggae",
+    "rock",
+]
+
+# Internal remix engine currently has 5 presets; map 10-genre labels to them.
+GENRE_TO_PRESET = {
+    "blues": "mellow_rainy",
+    "classical": "mellow_rainy",
+    "country": "tiktok_house",
+    "disco": "tiktok_house",
+    "hiphop": "jedag_jedug",
+    "jazz": "lofi_chill",
+    "metal": "cinematic_epic",
+    "pop": "tiktok_house",
+    "reggae": "lofi_chill",
+    "rock": "cinematic_epic",
+}
+
 def parse_args():
     p = argparse.ArgumentParser(
         description="Viral Studio: Multi-platform creative + Video + ML re-scoring"
@@ -60,7 +87,7 @@ def parse_args():
 
     p.add_argument(
         "--audio-style",
-        choices=["jedag_jedug", "tiktok_house", "mellow_rainy", "cinematic_epic", "lofi_chill"],
+        choices=GENRE_STYLE_CHOICES,
         default=None,
         help="Force audio remix style (optional)"
     )
@@ -435,7 +462,7 @@ def _storyboard_text(storyboard, audio_style: str | None = None) -> str:
         return ""
     lines = []
     def _normalize_style(text: str) -> str:
-        if not audio_style or audio_style == "jedag_jedug":
+        if not audio_style:
             return text
         if "jedag" in text.lower():
             for token in ("jedag jedug", "jedag-jedug", "jedag_jedug"):
@@ -476,7 +503,7 @@ def _augment_video_prompts(video_prompts, storyboard, ref_image_urls=None, audio
             "keep identity consistent (face, hair, outfit style)."
         )
     def _normalize_style(prompt: str) -> str:
-        if not audio_style or audio_style == "jedag_jedug":
+        if not audio_style:
             return prompt
         if "jedag" in prompt.lower():
             for token in ("jedag jedug", "jedag-jedug", "jedag_jedug"):
@@ -995,20 +1022,26 @@ def main():
 
             # AUTO STYLE kalau user tidak memilih
             if style is None:
-                if platform in ("tiktok", "instagram", "youtube_short"):
-                    style = "jedag_jedug" if mood in ("hype", "happy") else "mellow_rainy"
-                else:
-                    style = "cinematic_epic"
+                # Derive from ML genre label when available, then fallback by mood/platform.
+                ml_style = (ml_pred.get("genre_label") or "").strip().lower()
+                style = ml_style if ml_style in GENRE_STYLE_CHOICES else None
+                if style is None:
+                    if platform in ("tiktok", "instagram", "youtube_short"):
+                        style = "hiphop" if mood in ("hype", "happy") else "jazz"
+                    else:
+                        style = "rock"
 
-            if style == "jedag_jedug":
+            preset_style = GENRE_TO_PRESET.get(style, "mellow_rainy")
+
+            if preset_style == "jedag_jedug":
                 plan = preset_jedag_jedug(src_bpm, args.drum_loop)
-            elif style == "tiktok_house":
+            elif preset_style == "tiktok_house":
                 plan = preset_tiktok_house(src_bpm, args.drum_loop)
-            elif style == "mellow_rainy":
+            elif preset_style == "mellow_rainy":
                 plan = preset_mellow_rainy()
-            elif style == "cinematic_epic":
+            elif preset_style == "cinematic_epic":
                 plan = preset_cinematic_epic()
-            elif style == "lofi_chill":
+            elif preset_style == "lofi_chill":
                 plan = preset_lofi_chill()
             else:
                 plan = preset_mellow_rainy()
@@ -1020,7 +1053,7 @@ def main():
                 target_duration_sec=target_dur
             )
 
-            print(f"[AUDIO] style={style} -> {audio_for_platform}")
+            print(f"[AUDIO] style={style} preset={preset_style} -> {audio_for_platform}")
 
         # generate_videos_kie tetap import kalau mode normal
         if args.skip_video_gen:

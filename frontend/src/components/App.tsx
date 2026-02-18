@@ -5,7 +5,7 @@ import { clearToken, fetchJobs, getToken, login, setToken, submitJob } from "../
 import { Job } from "../types";
 
 const moodOptions = ["happy", "hype", "sad", "mellow", "nostalgic"];
-const audioStyles = ["jedag_jedug", "tiktok_house", "mellow_rainy", "cinematic_epic", "lofi_chill"];
+const audioStyles = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"];
 
 export default function App() {
   const [token, setLocalToken] = useState(getToken());
@@ -21,7 +21,7 @@ export default function App() {
   const [mood, setMood] = useState("hype");
   const [platforms, setPlatforms] = useState("tiktok");
   const [remix, setRemix] = useState(true);
-  const [audioStyle, setAudioStyle] = useState("lofi_chill");
+  const [audioStyle, setAudioStyle] = useState("jazz");
   const [clipSegSec, setClipSegSec] = useState("5");
   const [audio, setAudio] = useState<File | null>(null);
   const [lyrics, setLyrics] = useState<File | null>(null);
