@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 import re
 import math
+from datetime import datetime
 
 from ml.feature_audio import extract_audio_features
 from ml.feature_text import extract_text_features
@@ -173,6 +174,30 @@ def _hashtags_from_text(text_in: str, max_tags: int = 6) -> list[str]:
             break
     return [f"#{w}" for w in seen]
 
+def _platform_one_hot(platform: str) -> dict:
+    keys = {
+        "instagram": "platform_instagram",
+        "tiktok": "platform_tiktok",
+        "twitter": "platform_twitter",
+        "facebook": "platform_facebook",
+        "youtube": "platform_youtube",
+        "reddit": "platform_reddit",
+    }
+    out = {v: 0.0 for v in keys.values()}
+    p = (platform or "").strip().lower()
+    for k, v in keys.items():
+        if k in p:
+            out[v] = 1.0
+            break
+    return out
+
+def _day_one_hot(dt: datetime) -> dict:
+    # Monday=0 ... Sunday=6
+    out = {f"day_{i}": 0.0 for i in range(7)}
+    idx = dt.weekday()
+    out[f"day_{idx}"] = 1.0
+    return out
+
 def _probe_duration_sec(path: str) -> float | None:
     try:
         p = subprocess.run(
@@ -188,6 +213,39 @@ def _probe_duration_sec(path: str) -> float | None:
         return float((p.stdout or "").strip())
     except ValueError:
         return None
+
+def _has_audio_stream(path: str) -> bool:
+    try:
+        p = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", path],
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return False
+    return p.returncode == 0 and bool(p.stdout.strip())
+
+def _extract_audio_from_video(video_path: str, out_path: str) -> bool:
+    if not _has_audio_stream(video_path):
+        return False
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-vn",
+        "-ac", "1",
+        "-ar", "22050",
+        out_path,
+    ]
+    print("[FFMPEG]", " ".join(cmd))
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    return p.returncode == 0 and Path(out_path).exists()
+
+def _detect_music_from_features(audio_feat: dict) -> bool:
+    try:
+        rms = float(audio_feat.get("rms", 0.0))
+    except Exception:
+        rms = 0.0
+    return rms >= 0.005
 
 def _probe_video_params(path: str) -> tuple[int, int, float] | None:
     try:
@@ -608,6 +666,15 @@ def main():
     if args.content_type == "music":
         if not audio_path or not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
+    # If general content and no audio uploaded, try to extract audio from video.
+    extracted_audio_path = None
+    if args.content_type == "general" and not audio_path and video_path and video_path.exists():
+        out_dir = OUTPUT_DIR / "audio_extracted"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{video_path.stem}_audio.wav"
+        if _extract_audio_from_video(str(video_path), str(out_path)):
+            extracted_audio_path = out_path
+            audio_path = out_path
     if lyrics_path and not lyrics_path.exists():
         raise FileNotFoundError(f"Lyrics file not found: {lyrics_path}")
     if video_path and not video_path.exists():
@@ -635,8 +702,13 @@ def main():
         raise ValueError("No valid platforms selected.")
 
     # ====== Feature Extraction ======
+    music_present = None
     if args.content_type == "music" and audio_path:
         audio_feat = extract_audio_features(str(audio_path))
+        music_present = _detect_music_from_features(audio_feat)
+    elif args.content_type == "general" and audio_path:
+        audio_feat = extract_audio_features(str(audio_path))
+        music_present = _detect_music_from_features(audio_feat)
     else:
         audio_feat = {
             "bpm": 120.0,
@@ -644,6 +716,7 @@ def main():
             "duration_sec": 0.0,
             "spectral_centroid": 0.0,
         }
+        music_present = False
 
     # Text features from lyrics + optional caption seed (CTA, sentiment, etc.)
     base_text = lyrics if lyrics else description
@@ -669,10 +742,6 @@ def main():
     base_features.update(text_feat)
     base_features.update(video_feat)
 
-    # ====== ML prediction (baseline) ======
-    scorer = ViralityScorer()
-    ml_pred = scorer.predict(base_features)
-
     # ====== Init LLM + KIE ======
     llm = None
     kie = None
@@ -690,20 +759,23 @@ def main():
 
 
     print("\n===== INPUT SUMMARY =====")
-    print("Audio:", str(audio_path) if audio_path else "(none)")
+    if extracted_audio_path:
+        print("Audio: (extracted)", str(extracted_audio_path))
+    else:
+        print("Audio:", str(audio_path) if audio_path else "(none)")
     print("Lyrics:", str(lyrics_path) if lyrics_path else "(none)")
     print("Description:", description if description else "(none)")
     print("Video:", str(video_path) if video_path else "(none)")
     print("Mood:", mood)
     print("Platforms:", list(selected.keys()))
     print("Seed caption:", caption_seed if caption_seed else "(none)")
+    if music_present is False and args.content_type == "general":
+        print("Music detected: none")
+    elif music_present is True and args.content_type == "general":
+        print("Music detected: yes")
     print("\n===== BASE FEATURES =====")
     for k in sorted(base_features.keys()):
         print(f"- {k}: {base_features[k]}")
-    print("\n===== ML BASELINE =====")
-    print("Virality score:", round(ml_pred["virality_score"], 2))
-    print("Genre:", ml_pred["genre"], f"({ml_pred.get('genre_label', 'unknown')})")
-    print("Audience:", ml_pred["audience"], f"({ml_pred.get('audience_label', 'unknown')})")
     print("=========================\n")
 
     # ====== Reference image extraction (for KIE / manual simulate) ======
@@ -751,11 +823,28 @@ def main():
 
     remixer = AudioRemixEngine()
 
+    # ====== ML prediction (baseline) ======
+    scorer = ViralityScorer()
+
     # ====== Per-platform generation loop ======
     results = {}
 
     for platform, profile in selected.items():
         print(f"\n=== {platform.upper()} ===")
+        # Platform/day-specific features for virality scoring
+        platform_feats = {}
+        platform_feats.update(base_features)
+        platform_feats.update(_platform_one_hot(platform))
+        platform_feats.update(_day_one_hot(datetime.utcnow()))
+        platform_feats["toxicity_score"] = 0.0
+        platform_feats["emotion_type_id"] = 0.0
+
+        ml_pred = scorer.predict(platform_feats)
+        print("\n===== ML BASELINE =====")
+        print("Virality score:", round(ml_pred["virality_score"], 2))
+        print("Genre:", ml_pred["genre"], f"({ml_pred.get('genre_label', 'unknown')})")
+        print("Audience:", ml_pred["audience"], f"({ml_pred.get('audience_label', 'unknown')})")
+        print("=========================\n")
 
         if args.resume_from_kie:
             # Load previous creative output if available
@@ -1031,12 +1120,12 @@ def main():
                     "prompt": "Concatenated all segments",
                 }]
 
-        base_features["_target_text"] = (
+        platform_feats["_target_text"] = (
             f"{platform}\n{args.mood}\n{caption_seed or ''}\n{args.audio_style or ''}\n{(lyrics or description)[:2000]}"
         )
 
         # Re-score generated videos and pick best
-        best_video, best_score = select_best(videos, scorer, base_features)
+        best_video, best_score = select_best(videos, scorer, platform_feats)
 
         if not best_video:
             if args.simulate_video and not args.resume_from_kie:

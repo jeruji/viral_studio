@@ -122,7 +122,7 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
         if not python_exe.exists():
             python_exe = Path("python")
 
-        cmd = [str(python_exe), "main.py"]
+        cmd = [str(python_exe), "-u", "main.py"]
         if input_paths.get("audio"):
             cmd += ["--audio", input_paths["audio"]]
         if input_paths.get("lyrics"):
@@ -154,6 +154,7 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
         log_path = log_dir / f"job_{job_id}.log"
         with log_path.open("w", encoding="utf-8") as f:
             env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
             env["OUTPUT_DIR"] = str(job_out_dir)
             p = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, env=env)
 

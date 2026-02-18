@@ -12,11 +12,16 @@ class ViralityScorer:
             self.genre_model = None
             self.audience_model = None
         self.genre_map = {
-            0: "jedag_jedug",
-            1: "tiktok_house",
-            2: "lofi_chill",
-            3: "mellow_rainy",
-            4: "cinematic_epic",
+            0: "blues",
+            1: "classical",
+            2: "country",
+            3: "disco",
+            4: "hiphop",
+            5: "jazz",
+            6: "metal",
+            7: "pop",
+            8: "reggae",
+            9: "rock",
         }
         self.audience_map = {
             0: "gen_z",
@@ -25,6 +30,7 @@ class ViralityScorer:
             3: "casual_scroller",
             4: "story_seeker",
         }
+        self.genre_rev = {v: k for k, v in self.genre_map.items()}
 
     def _make_X(self, model, feats: dict) -> pd.DataFrame:
         cols = list(getattr(model, "feature_names_in_", []))
@@ -48,17 +54,39 @@ class ViralityScorer:
         Xg = self._make_X(self.genre_model, feats)
         Xa = self._make_X(self.audience_model, feats)
 
-        proba = self.virality_model.predict_proba(Xv)[0]
-        # ambil proba kelas 1 kalau ada
-        classes = list(getattr(self.virality_model, "classes_", [0, 1]))
-        idx = classes.index(1) if 1 in classes else (1 if len(proba) > 1 else 0)
+        # Handle classifier (predict_proba) vs regressor (predict)
+        if hasattr(self.virality_model, "predict_proba"):
+            proba = self.virality_model.predict_proba(Xv)[0]
+            # ambil proba kelas 1 kalau ada
+            classes = list(getattr(self.virality_model, "classes_", [0, 1]))
+            idx = classes.index(1) if 1 in classes else (1 if len(proba) > 1 else 0)
+            virality_score = float(proba[idx] * 100.0)
+        else:
+            pred = float(self.virality_model.predict(Xv)[0])
+            # model regression predicts engagement_rate (0-1 range); clamp to 0-100
+            virality_score = max(0.0, min(100.0, pred * 100.0))
 
-        genre_id = int(self.genre_model.predict(Xg)[0])
-        audience_id = int(self.audience_model.predict(Xa)[0])
+        genre_pred = self.genre_model.predict(Xg)[0]
+        if isinstance(genre_pred, str):
+            genre_label = genre_pred.strip().lower()
+            genre_id = int(self.genre_rev.get(genre_label, -1))
+        else:
+            genre_id = int(genre_pred)
+            genre_label = self.genre_map.get(genre_id, f"unknown_{genre_id}")
+
+        audience_pred = self.audience_model.predict(Xa)[0]
+        if isinstance(audience_pred, str):
+            # fallback if audience model ever returns string labels
+            aud_rev = {v: k for k, v in self.audience_map.items()}
+            audience_label = audience_pred.strip().lower()
+            audience_id = int(aud_rev.get(audience_label, -1))
+        else:
+            audience_id = int(audience_pred)
+            audience_label = self.audience_map.get(audience_id, f"unknown_{audience_id}")
         return {
-            "virality_score": float(proba[idx] * 100.0),
+            "virality_score": virality_score,
             "genre": genre_id,
-            "genre_label": self.genre_map.get(genre_id, f"unknown_{genre_id}"),
+            "genre_label": genre_label,
             "audience": audience_id,
-            "audience_label": self.audience_map.get(audience_id, f"unknown_{audience_id}"),
+            "audience_label": audience_label,
         }
