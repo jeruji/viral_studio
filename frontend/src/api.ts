@@ -34,7 +34,7 @@ export async function fetchJobs(): Promise<Job[]> {
 }
 
 export async function submitJob(payload: {
-  mood: string;
+  mood?: string;
   platforms: string;
   remix: boolean;
   audio_style?: string;
@@ -47,7 +47,7 @@ export async function submitJob(payload: {
 }): Promise<Job> {
   const token = getToken();
   const form = new FormData();
-  form.append("mood", payload.mood);
+  if (payload.mood) form.append("mood", payload.mood);
   if (payload.platforms) form.append("platforms", payload.platforms);
   if (payload.remix) form.append("remix", "true");
   if (payload.audio_style) form.append("audio_style", payload.audio_style);
