@@ -415,16 +415,27 @@ const HomePage = () => {
                                                                 </p>
                                                                 <p>
                                                                     <strong>Virality Score: {" "}</strong>
-                                                                    {job["ml_baseline"]["virality_score"]}
+                                                                    {job[platform]["ml_baseline"]["virality_score"]}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Audience: {" "}</strong>
-                                                                    {job["ml_baseline"]["audience_label"].split("_").join(" ")}
+                                                                    {job[platform]["ml_baseline"]["audience_label"].split("_").join(" ")}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Genre: {" "}</strong>
-                                                                    {job["ml_baseline"]["genre_label"]}
+                                                                    {job[platform]["ml_baseline"]["genre_label"]}
                                                                 </p>
+                                                                <strong>Recommendations: </strong>
+                                                                <ul>
+                                                                    {job[platform]["recommendations"].map((recom: string, indexRecom: number) => {
+                                                                        return (
+                                                                            <li key={`recommendation-${job[platform]}-${indexRecom}`}>
+                                                                                {recom}
+                                                                            </li>
+                                                                        )
+                                                                    })}
+
+                                                                </ul>
                                                             </div>
                                                         </div>
                                                     </div>

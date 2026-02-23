@@ -97,13 +97,13 @@ const ListJobs = () => {
                                 scrollable
                             >
                                 <ModalHeader>
-                                    <p>Jobs id : {detailJob?.id}</p>
+                                    <p>Jobs : {detailJob?.id}</p>
                                 </ModalHeader>
                                 <ModalBody>
-                                    {Object.entries(detailJob?.report_json).map(([platform, item]:any, indexResult:number) => {
+                                    {Object.entries(detailJob?.report_json).map(([platform, item]: any, indexResult: number) => {
                                         const key = `${item}-${platform}`
                                         return (
-                                            <div className={`py-3 ${indexResult!=0 && "border-top"}`}  key={key}>
+                                            <div className={`py-3 ${indexResult != 0 && "border-top"}`} key={key}>
                                                 <h5><strong>{platform.split("_").join(" ").toUpperCase()}</strong></h5>
                                                 <p>
                                                     <strong>Caption:</strong>{" "}
@@ -129,6 +129,17 @@ const ListJobs = () => {
                                                     <strong>Genre: {" "}</strong>
                                                     {item["ml_baseline"]["genre_label"]}
                                                 </p>
+                                                <strong>Recommendations: </strong>
+                                                <ul>
+                                                    {item["recommendations"].map((recom: string, indexRecom: number) => {
+                                                        return (
+                                                            <li key={`recommendation-${indexRecom}`}>
+                                                                {recom}
+                                                            </li>
+                                                        )
+                                                    })}
+
+                                                </ul>
                                             </div>
                                         )
                                     })}
