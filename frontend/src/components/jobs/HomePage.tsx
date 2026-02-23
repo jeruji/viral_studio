@@ -80,12 +80,12 @@ const HomePage = () => {
             const platformValue = platforms.map((p: selectOptions) => p.value);
 
             formData.append("platforms", platformValue.join(","));
-            formData.append("mood", mood);
             formData.append("content_type", contentType);
 
             if (contentType === "general") {
                 formData.append("description", description);
             } else {
+                formData.append("mood", mood);
                 formData.append("remix", remix.toString());
                 formData.append("audio_style", audioStyle);
                 formData.append("clip_seg_sec", clipSegSec);
@@ -200,23 +200,6 @@ const HomePage = () => {
                                 </div>
                             </div>
 
-                            <div className="row py-2">
-                                <div className="col-3">Mood</div>
-                                <div className="col">
-                                    <select
-                                        value={mood}
-                                        onChange={(e) => setMood(e.target.value)}
-                                        className="custom-file-label"
-                                    >
-                                        {moodOptions.map((m) => (
-                                            <option key={m} value={m}>
-                                                {m.charAt(0).toUpperCase() + m.slice(1)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
 
                             <div className="row py-2">
                                 <div className="col-3">
@@ -270,6 +253,24 @@ const HomePage = () => {
                                                 };
                                             }} />
                                             <span >{audio ? audio.name : " No audio chosen"}</span>
+                                        </div>
+                                    </div>
+
+
+                                    <div className="row py-2">
+                                        <div className="col-3">Mood</div>
+                                        <div className="col">
+                                            <select
+                                                value={mood}
+                                                onChange={(e) => setMood(e.target.value)}
+                                                className="custom-file-label"
+                                            >
+                                                {moodOptions.map((m) => (
+                                                    <option key={m} value={m}>
+                                                        {m.charAt(0).toUpperCase() + m.slice(1)}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </div>
                                     <div className="row">
