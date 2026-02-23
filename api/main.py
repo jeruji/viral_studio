@@ -127,7 +127,8 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
             cmd += ["--audio", input_paths["audio"]]
         if input_paths.get("lyrics"):
             cmd += ["--lyrics", input_paths["lyrics"]]
-        cmd += ["--mood", params["mood"]]
+        if params.get("mood"):
+            cmd += ["--mood", params["mood"]]
         if params.get("description"):
             cmd += ["--description", params["description"]]
         if params.get("content_type"):
@@ -178,7 +179,7 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
 @app.post("/jobs", response_model=JobOut)
 def create_job(
     background: BackgroundTasks,
-    mood: str = Form(...),
+    mood: Optional[str] = Form(None),
     platforms: Optional[str] = Form(None),
     remix: bool = Form(False),
     audio_style: Optional[str] = Form(None),
@@ -191,6 +192,9 @@ def create_job(
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
+    if (content_type or "music") == "music" and not mood:
+        raise HTTPException(status_code=422, detail="mood is required for content_type=music")
+
     upload_dir = Path("uploads")
     upload_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")

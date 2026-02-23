@@ -72,7 +72,7 @@ def parse_args():
     p.add_argument("--description", default="", help="Optional description (used when lyrics not provided)")
     p.add_argument("--content-type", choices=["music", "general"], default="music",
                    help="Content type: music uses audio+lyrics; general can be caption-only")
-    p.add_argument("--mood", required=True, choices=["happy", "hype", "sad", "mellow", "nostalgic"])
+    p.add_argument("--mood", required=False, choices=["happy", "hype", "sad", "mellow", "nostalgic"])
     p.add_argument("--remix", action="store_true", help="Enable audio adaptation/remix for each platform")
         # --- Character reference extraction (from source video) ---
     p.add_argument("--use-character-ref", action="store_true", help="Extract person/face crops from --video for reference-to-video")
@@ -836,7 +836,10 @@ def main():
     description = (args.description or "").strip()
     if not lyrics and not description:
         raise ValueError("Provide --lyrics or --description")
-    mood = args.mood.lower()
+    if args.content_type == "music" and not args.mood:
+        raise ValueError("--mood is required for content_type=music")
+    # General flow does not need mood input; use a neutral-soft fallback for downstream logic.
+    mood = (args.mood or "mellow").lower()
     caption_seed = (args.caption or "").strip()
 
     # Load platform profiles

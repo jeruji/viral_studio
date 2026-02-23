@@ -49,7 +49,7 @@ export default function App() {
     setError(null);
     try {
       const job = await submitJob({
-        mood,
+        mood: contentType === "music" ? mood : undefined,
         platforms,
         remix,
         audio_style: audioStyle,
@@ -165,8 +165,15 @@ export default function App() {
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Mood</label>
-                      <select className="form-select" value={mood} onChange={(e) => setMood(e.target.value)}>
+                      <label className="form-label">
+                        Mood {contentType === "general" ? "(optional for general)" : ""}
+                      </label>
+                      <select
+                        className="form-select"
+                        value={mood}
+                        onChange={(e) => setMood(e.target.value)}
+                        disabled={contentType === "general"}
+                      >
                         {moodOptions.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
