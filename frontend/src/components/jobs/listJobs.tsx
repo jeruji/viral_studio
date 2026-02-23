@@ -117,6 +117,18 @@ const ListJobs = () => {
                                                     <strong>Best Video: {" "}</strong>
                                                     {item["best_video"]}
                                                 </p>
+                                                <p>
+                                                    <strong>Virality Score: {" "}</strong>
+                                                    {item["ml_baseline"]["virality_score"]}
+                                                </p>
+                                                <p>
+                                                    <strong>Audience: {" "}</strong>
+                                                    {item["ml_baseline"]["audience_label"].split("_").join(" ")}
+                                                </p>
+                                                <p>
+                                                    <strong>Genre: {" "}</strong>
+                                                    {item["ml_baseline"]["genre_label"]}
+                                                </p>
                                             </div>
                                         )
                                     })}

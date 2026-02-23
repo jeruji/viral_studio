@@ -12,6 +12,8 @@ export type Job = {
 
 export const moodOptions = ["happy", "hype", "sad", "mellow", "nostalgic"];
 export const audioStyles = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"];
+export const audienceMap = ["gen_z", "young_adult", "music_enthusiast", "casual_scroller", "story_seeker"]
+
 export const platformOptions = [
   { value: 'tiktok', label: 'Tiktok' },
   { value: 'instagram', label: 'Instagram' },
