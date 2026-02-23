@@ -225,6 +225,131 @@ def _day_one_hot(dt: datetime) -> dict:
     out[f"day_{idx}"] = 1.0
     return out
 
+def _build_ml_recommendations(
+    ml_pred: dict,
+    feats: dict,
+    platform: str,
+    mood: str,
+    content_type: str,
+    profile: dict,
+) -> list[str]:
+    recs = []
+    score = float(ml_pred.get("virality_score", 50.0) or 50.0)
+    genre = str(ml_pred.get("genre_label") or "unknown")
+    audience = str(ml_pred.get("audience_label") or "unknown")
+
+    # Score-driven actions with concrete targets
+    if score < 40:
+        recs.append(f"Low virality signal ({score:.1f}/100): replace the first 1.5-2.0 seconds with a stronger outcome-focused hook.")
+        recs.append("Reduce dead time between scenes and keep only high-information moments.")
+    elif score < 70:
+        recs.append(f"Mid virality signal ({score:.1f}/100): keep concept, but tighten pacing and transitions in the middle third.")
+        recs.append("Run A/B tests for caption hook line and first frame cover text.")
+    else:
+        recs.append(f"Strong virality signal ({score:.1f}/100): keep core structure and scale with platform-native variants.")
+        recs.append("Repurpose this cut for secondary platforms with localized CTA wording.")
+
+    # Technical metrics
+    cut_rate = float(feats.get("cut_rate_per_min", 0.0) or 0.0)
+    if cut_rate < 18:
+        recs.append(f"Edit rhythm is slow ({cut_rate:.1f} cuts/min). Increase shot changes in the hook and chorus sections.")
+    elif cut_rate > 90:
+        recs.append(f"Edit rhythm is very aggressive ({cut_rate:.1f} cuts/min). Add 1-2 breathing shots for readability.")
+
+    has_cta = float(feats.get("has_cta", 0.0) or 0.0)
+    if has_cta < 1:
+        recs.append("CTA is missing. Add one explicit action prompt (comment, save, or tag) in caption and end-card.")
+
+    sentiment_code = float(feats.get("sentiment_code", 1.0) or 1.0)
+    if mood in ("hype", "happy") and sentiment_code == 0:
+        recs.append("Copy tone is too negative for the selected mood. Reframe wording to energetic/positive language.")
+    if mood in ("mellow", "nostalgic", "sad") and sentiment_code == 2:
+        recs.append("Copy tone is too upbeat for the selected mood. Use calmer reflective phrasing.")
+
+    dur_range = profile.get("duration", [15, 20]) if isinstance(profile, dict) else [15, 20]
+    if isinstance(dur_range, list) and len(dur_range) >= 2:
+        recs.append(f"Target runtime window for {platform}: {int(dur_range[0])}-{int(dur_range[1])} seconds.")
+
+    if content_type == "general":
+        recs.append("For general content, prioritize narrative clarity and context in caption over heavy visual effects.")
+    else:
+        recs.append("For music content, align visual energy and motion pattern with the detected genre feel.")
+
+    recs.append(f"Detected genre: {genre}. Primary audience: {audience}.")
+    return recs[:8]
+
+def _build_llm_recommendations(
+    llm,
+    ml_pred: dict,
+    feats: dict,
+    platform: str,
+    mood: str,
+    content_type: str,
+    profile: dict,
+    caption_text: str,
+) -> list[str]:
+    if llm is None:
+        return []
+    system_prompt = (
+        "You are a senior social media growth strategist. "
+        "Return ONLY valid JSON with key 'recommendations' as an array of 5 short, actionable English suggestions. "
+        "Use provided metrics directly; do not give generic advice."
+    )
+    payload = {
+        "platform": platform,
+        "mood": mood,
+        "content_type": content_type,
+        "profile": profile,
+        "ml_baseline": ml_pred,
+        "features": feats,
+        "caption_text": caption_text or "",
+    }
+    try:
+        out = llm.generate_creative(system_prompt, payload)
+    except Exception:
+        return []
+    recs = out.get("recommendations") if isinstance(out, dict) else None
+    if not isinstance(recs, list):
+        return []
+    cleaned = []
+    for item in recs:
+        s = str(item).strip()
+        if s:
+            cleaned.append(s)
+    return cleaned[:8]
+
+def _build_recommendations(
+    llm,
+    ml_pred: dict,
+    feats: dict,
+    platform: str,
+    mood: str,
+    content_type: str,
+    profile: dict,
+    caption_text: str,
+) -> list[str]:
+    ml_recs = _build_ml_recommendations(
+        ml_pred=ml_pred,
+        feats=feats,
+        platform=platform,
+        mood=mood,
+        content_type=content_type,
+        profile=profile,
+    )
+    llm_recs = _build_llm_recommendations(
+        llm=llm,
+        ml_pred=ml_pred,
+        feats=feats,
+        platform=platform,
+        mood=mood,
+        content_type=content_type,
+        profile=profile,
+        caption_text=caption_text,
+    )
+    # Blend LLM + ML recommendations; LLM first when available.
+    merged = llm_recs + [r for r in ml_recs if r not in llm_recs]
+    return merged[:8]
+
 def _probe_duration_sec(path: str) -> float | None:
     try:
         p = subprocess.run(
@@ -1068,11 +1193,23 @@ def main():
                     out_dir.mkdir(parents=True, exist_ok=True)
                     out_path = out_dir / f"{platform}_best.mp4"
                     best_vid = _trim_video_best(str(video_path), float(target_dur), str(out_path))
+            recommendations = _build_recommendations(
+                llm=llm,
+                ml_pred=ml_pred,
+                feats=platform_feats,
+                platform=platform,
+                mood=mood,
+                content_type=args.content_type,
+                profile=profile,
+                caption_text=caption_final,
+            )
             results[platform] = {
                 "best_video": best_vid,
                 "best_score": None,
                 "caption": caption_final,
                 "creative": creative,
+                "ml_baseline": ml_pred,
+                "recommendations": recommendations,
             }
             continue
         if args.resume_from_kie:
@@ -1115,11 +1252,23 @@ def main():
                 print("[SIMULATE] Then rerun with --resume-from-kie")
 
                 # In simulate mode we don't have mp4 files yet, so skip scoring/merge.
+                recommendations = _build_recommendations(
+                    llm=llm,
+                    ml_pred=ml_pred,
+                    feats=platform_feats,
+                    platform=platform,
+                    mood=mood,
+                    content_type=args.content_type,
+                    profile=profile,
+                    caption_text=caption_seed,
+                )
                 results[platform] = {
                     "best_video": None,
                     "best_score": None,
                     "caption": caption_seed,
                     "creative": creative,
+                    "ml_baseline": ml_pred,
+                    "recommendations": recommendations,
                 }
                 continue
 
@@ -1191,11 +1340,23 @@ def main():
         print("Best score:", round(best_score, 2))
         print("Caption:", caption_final)
 
+        recommendations = _build_recommendations(
+            llm=llm,
+            ml_pred=ml_pred,
+            feats=platform_feats,
+            platform=platform,
+            mood=mood,
+            content_type=args.content_type,
+            profile=profile,
+            caption_text=caption_final,
+        )
         results[platform] = {
             "best_video": best_video,
             "best_score": float(best_score),
             "caption": caption_final,
             "creative": creative,
+            "ml_baseline": ml_pred,
+            "recommendations": recommendations,
         }
 
     # Save a JSON report for auditing
