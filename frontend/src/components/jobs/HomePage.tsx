@@ -8,7 +8,16 @@ import CreateService from "../service/CreateService";
 import RetrieveService from "../service/RetrieveService";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { getCurrentUserInfo } from "../service/AuthHeader";
+import { authHeader, getCurrentUserInfo } from "../service/AuthHeader";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const normalizeHashtags = (hashtags: any): string => {
+    if (Array.isArray(hashtags)) return hashtags.join(", ");
+    if (typeof hashtags === "string") return hashtags;
+    return "";
+};
+
 const HomePage = () => {
     const [lyricSelection, setLyricSelection] = useState("uploadLyric")
     const [description, setDescription] = useState<string>("")
@@ -28,6 +37,27 @@ const HomePage = () => {
     const [jobId, setJobId] = useState<string>()
     const [isActiveResult, setIsActiveResult] = useState<string>("result-0")
     const navigate = useNavigate()
+
+    async function handleDownloadVideo(jobId: string, platformKey: string, fallbackPath?: string) {
+        try {
+            const res = await fetch(`${API_URL}/jobs/${jobId}/download-video?platform=${encodeURIComponent(platformKey)}`, {
+                headers: authHeader() as HeadersInit
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const fallbackName = (fallbackPath || "").split(/[/\\\\]/).pop() || `${platformKey}.mp4`;
+            a.download = fallbackName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            swal("Download Video", "Failed to download video from API", "error");
+        }
+    }
 
     const validationData = () => {
         const validateField = (fieldValue: string | number | any[] | boolean | File | null, fieldName: string) => {
@@ -401,17 +431,32 @@ const HomePage = () => {
                                                                 }`}
                                                         >
                                                             <div className="accordion-body">
+                                                                {(() => {
+                                                                    const bestVideoPath = job?.[platform]?.["best_video"] || "";
+                                                                    const firstCaption = job?.[platform]?.creative?.captions?.[0];
+                                                                    const hashtagsText = normalizeHashtags(firstCaption?.hashtags);
+                                                                    return (
+                                                                        <>
                                                                 <p>
                                                                     <strong>Caption:</strong>{" "}
                                                                     {job[platform].caption}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Hashtags: {" "}</strong>
-                                                                    {job[platform]['creative']['captions'][0]['hashtags'].join(", ")}
+                                                                    {hashtagsText}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Best Video: {" "}</strong>
-                                                                    {job[platform]["best_video"]}
+                                                                    {bestVideoPath || "-"}
+                                                                    {bestVideoPath && jobId && (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-sm btn-outline-primary ms-2"
+                                                                            onClick={() => handleDownloadVideo(jobId, platform, bestVideoPath)}
+                                                                        >
+                                                                            Download
+                                                                        </button>
+                                                                    )}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Virality Score: {" "}</strong>
@@ -436,6 +481,9 @@ const HomePage = () => {
                                                                     })}
 
                                                                 </ul>
+                                                                        </>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         </div>
                                                     </div>
