@@ -7,8 +7,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .db import Base, engine, get_db
@@ -36,6 +37,15 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+
+
+def _get_job_or_404(job_id: int, db: Session, current: User) -> Job:
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if current.role != "admin" and job.user_id != current.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return job
 
 
 @app.post("/auth/login", response_model=Token)
@@ -100,11 +110,7 @@ def list_jobs(db: Session = Depends(get_db), current: User = Depends(get_current
 
 @app.get("/jobs/{job_id}", response_model=JobOut)
 def get_job(job_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if current.role != "admin" and job.user_id != current.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    job = _get_job_or_404(job_id, db, current)
     return _job_payload(job)
 
 
@@ -244,11 +250,7 @@ def create_job(
 
 @app.get("/jobs/{job_id}/result")
 def get_job_result(job_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if current.role != "admin" and job.user_id != current.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    job = _get_job_or_404(job_id, db, current)
     if not job.report_path:
         raise HTTPException(status_code=404, detail="Report not ready")
     report = Path(job.report_path)
@@ -258,6 +260,37 @@ def get_job_result(job_id: int, db: Session = Depends(get_db), current: User = D
         return json.loads(report.read_text(encoding="utf-8"))
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to read report")
+
+
+@app.get("/jobs/{job_id}/download-video")
+def download_job_video(
+    job_id: int,
+    platform: str = Query(..., description="Platform key inside report_json, e.g. tiktok"),
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    job = _get_job_or_404(job_id, db, current)
+    report_json = _load_report_json(job)
+    if not report_json:
+        raise HTTPException(status_code=404, detail="Report not ready")
+    item = report_json.get(platform)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail=f"Platform '{platform}' not found in report")
+    best_video = item.get("best_video")
+    if not best_video:
+        raise HTTPException(status_code=404, detail="No video output for this platform")
+
+    path = Path(str(best_video))
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Video file missing on server")
+    if not path.is_file():
+        raise HTTPException(status_code=400, detail="Invalid video path")
+
+    return FileResponse(
+        path=str(path),
+        media_type="video/mp4",
+        filename=path.name,
+    )
 def _load_report_json(job: Job) -> Optional[dict]:
     if not job.report_path:
         return None

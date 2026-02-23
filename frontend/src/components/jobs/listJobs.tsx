@@ -3,6 +3,16 @@ import RetrieveService from "../service/RetrieveService";
 import { Job, reportJob } from "../../types";
 import NavbarPage from "../Navbar";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "react-bootstrap";
+import { authHeader } from "../service/AuthHeader";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const normalizeHashtags = (hashtags: any): string => {
+    if (Array.isArray(hashtags)) return hashtags.join(", ");
+    if (typeof hashtags === "string") return hashtags;
+    return "";
+};
+
 const ListJobs = () => {
     const [loading, setLoading] = useState<boolean>(true)
     const [jobs, setJobs] = useState<reportJob[]>([])
@@ -10,6 +20,29 @@ const ListJobs = () => {
     const [modalOpen, setModalOpen] = useState<boolean>(false)
     const toggleModal = () => setModalOpen(!modalOpen);
     useEffect(() => { getAllJobs() }, [])
+
+    async function handleDownloadVideo(jobId: number, platformKey: string, fallbackPath?: string) {
+        try {
+            const res = await fetch(`${API_URL}/jobs/${jobId}/download-video?platform=${encodeURIComponent(platformKey)}`, {
+                headers: authHeader() as HeadersInit
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const fallbackName = (fallbackPath || "").split(/[/\\\\]/).pop() || `${platformKey}.mp4`;
+            a.download = fallbackName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            swal("Download Video", "Failed to download video from API", "error");
+        }
+    }
 
 
     async function getAllJobs() {
@@ -102,6 +135,9 @@ const ListJobs = () => {
                                 <ModalBody>
                                     {Object.entries(detailJob?.report_json).map(([platform, item]: any, indexResult: number) => {
                                         const key = `${item}-${platform}`
+                                        const bestVideoPath = item?.["best_video"] || "";
+                                        const firstCaption = item?.creative?.captions?.[0];
+                                        const hashtagsText = normalizeHashtags(firstCaption?.hashtags);
                                         return (
                                             <div className={`py-3 ${indexResult != 0 && "border-top"}`} key={key}>
                                                 <h5><strong>{platform.split("_").join(" ").toUpperCase()}</strong></h5>
@@ -111,11 +147,23 @@ const ListJobs = () => {
                                                 </p>
                                                 <p>
                                                     <strong>Hashtags: {" "}</strong>
-                                                    {item['creative']['captions'][0]['hashtags'].join(", ")}
+                                                    {hashtagsText}
                                                 </p>
                                                 <p>
                                                     <strong>Best Video: {" "}</strong>
-                                                    {item["best_video"]}
+                                                    {bestVideoPath || "-"}
+                                                    {bestVideoPath && (
+                                                        <>
+                                                            {" "}
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-primary ms-2"
+                                                                onClick={() => handleDownloadVideo(detailJob.id, platform, bestVideoPath)}
+                                                            >
+                                                                Download
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </p>
                                                 <p>
                                                     <strong>Virality Score: {" "}</strong>
