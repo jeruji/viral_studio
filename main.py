@@ -1206,6 +1206,13 @@ def main():
                 profile=profile,
                 caption_text=caption_final,
             )
+            produced_audio = audio_for_platform if (args.content_type == "music" and audio_for_platform) else None
+            manual_video_instruction = None
+            if args.content_type == "music":
+                manual_video_instruction = (
+                    "AI video generation is disabled. Use the creative prompts/caption to generate video manually, "
+                    "then merge your generated video with produced_audio."
+                )
             results[platform] = {
                 "best_video": best_vid,
                 "best_score": None,
@@ -1213,6 +1220,8 @@ def main():
                 "creative": creative,
                 "ml_baseline": ml_pred,
                 "recommendations": recommendations,
+                "produced_audio": produced_audio,
+                "manual_video_instruction": manual_video_instruction,
             }
             continue
         if args.resume_from_kie:

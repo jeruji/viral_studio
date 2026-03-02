@@ -27,6 +27,7 @@ const HomePage = () => {
     const [contentType, setContentType] = useState("general");
     const [platforms, setPlatforms] = useState([]);
     const [remix, setRemix] = useState(true);
+    const [generateAiVideo, setGenerateAiVideo] = useState(true);
     const [audioStyle, setAudioStyle] = useState("lofi_chill");
     const [clipSegSec, setClipSegSec] = useState("5");
     const [audio, setAudio] = useState<File | null>(null);
@@ -81,15 +82,13 @@ const HomePage = () => {
         };
         const fieldsToValidate: { field: string | number | any[] | boolean | File | null; name: string }[] = [
             { field: platforms, name: "Platform" },
-            { field: mood, name: "Mood" },
-            { field: contentType, name: "Content Type" },
-            { field: video, name: "video" }
+            { field: contentType, name: "Content Type" }
 
         ];
         if (contentType == "general") {
-            fieldsToValidate.push({ field: description, name: "Description" })
+            fieldsToValidate.push({ field: description, name: "Description" }, { field: video, name: "video" })
         } else {
-            fieldsToValidate.push({ field: remix, name: "Remix" }, { field: audioStyle, name: "Audio Style" }, { field: clipSegSec, name: "Clip Seg Sec" },
+            fieldsToValidate.push({ field: mood, name: "Mood" }, { field: remix, name: "Remix" }, { field: audioStyle, name: "Audio Style" }, { field: clipSegSec, name: "Clip Seg Sec" },
                 { field: audio, name: "audio" }, { field: lyrics, name: "Lyrics" }
             )
         }
@@ -117,6 +116,7 @@ const HomePage = () => {
             } else {
                 formData.append("mood", mood);
                 formData.append("remix", remix.toString());
+                formData.append("generate_ai_video", generateAiVideo.toString());
                 formData.append("audio_style", audioStyle);
                 formData.append("clip_seg_sec", clipSegSec);
                 if (audio) formData.append("audio", audio);
@@ -317,6 +317,20 @@ const HomePage = () => {
                                             </label>
                                         </div>
                                     </div>
+                                    <div className="row">
+                                        <div className="col-3">
+                                        </div>
+                                        <div className="col">
+                                            <label className="flex items-center gap-3 text-sm text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={generateAiVideo}
+                                                    onChange={(e) => setGenerateAiVideo(e.target.checked)}
+                                                />
+                                                Generate AI video
+                                            </label>
+                                        </div>
+                                    </div>
                                     <div className="row py-2">
                                         <div className="col-3">Audio Style</div>
                                         <div className="col">
@@ -458,6 +472,18 @@ const HomePage = () => {
                                                                         </button>
                                                                     )}
                                                                 </p>
+                                                                {job[platform]["produced_audio"] && (
+                                                                    <p>
+                                                                        <strong>Produced Audio: {" "}</strong>
+                                                                        {job[platform]["produced_audio"]}
+                                                                    </p>
+                                                                )}
+                                                                {job[platform]["manual_video_instruction"] && (
+                                                                    <p>
+                                                                        <strong>Manual Video Instruction: {" "}</strong>
+                                                                        {job[platform]["manual_video_instruction"]}
+                                                                    </p>
+                                                                )}
                                                                 <p>
                                                                     <strong>Virality Score: {" "}</strong>
                                                                     {job[platform]["ml_baseline"]["virality_score"]}

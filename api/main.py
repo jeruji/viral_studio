@@ -151,7 +151,7 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
             cmd += ["--clip-seg-sec", str(params["clip_seg_sec"])]
         if os.getenv("KIE_CALLBACK_URL"):
             cmd += ["--kie-callback-url", os.getenv("KIE_CALLBACK_URL")]
-        if params.get("content_type") == "general":
+        if params.get("content_type") == "general" or not params.get("generate_ai_video", True):
             cmd += ["--skip-video-gen"]
 
         log_dir = Path("outputs") / "jobs"
@@ -190,6 +190,7 @@ def create_job(
     remix: bool = Form(False),
     audio_style: Optional[str] = Form(None),
     clip_seg_sec: Optional[float] = Form(None),
+    generate_ai_video: bool = Form(True),
     content_type: Optional[str] = Form("music"),
     description: Optional[str] = Form(None),
     audio: Optional[UploadFile] = File(None),
@@ -225,6 +226,7 @@ def create_job(
         "remix": remix,
         "audio_style": audio_style,
         "clip_seg_sec": clip_seg_sec,
+        "generate_ai_video": generate_ai_video,
         "content_type": content_type,
         "description": description,
     }
