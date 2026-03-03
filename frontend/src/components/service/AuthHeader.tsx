@@ -2,15 +2,19 @@ import RetrieveService from "./RetrieveService";
 
 export const authHeader = () => {
     const userStr = localStorage.getItem("user");
-    if (!userStr) return {};
+    const baseHeaders: Record<string, string> = {
+        // Prevent ngrok free-tier browser interstitial on API requests
+        "ngrok-skip-browser-warning": "true",
+    };
+    if (!userStr) return baseHeaders;
 
     try {
         const token = JSON.parse(userStr);
         return token.access_token
-            ? { Authorization: `Bearer ${token.access_token}` }
-            : {};
+            ? { ...baseHeaders, Authorization: `Bearer ${token.access_token}` }
+            : baseHeaders;
     } catch {
-        return {};
+        return baseHeaders;
     }
 };
 

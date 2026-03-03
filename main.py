@@ -1147,11 +1147,14 @@ def main():
         if args.remix and audio_path and args.content_type == "music":
             src_bpm = audio_feat.get("bpm", 120.0)
             style = args.audio_style
+            style_alias = {"hip-hop": "hiphop", "hip hop": "hiphop"}
+            style = style_alias.get((style or "").strip().lower(), style)
 
             # AUTO STYLE kalau user tidak memilih
             if style is None:
                 # Derive from ML genre label when available, then fallback by mood/platform.
                 ml_style = (ml_pred.get("genre_label") or "").strip().lower()
+                ml_style = style_alias.get(ml_style, ml_style)
                 style = ml_style if ml_style in GENRE_STYLE_CHOICES else None
                 if style is None:
                     if platform in ("tiktok", "instagram", "youtube_short"):
@@ -1207,8 +1210,12 @@ def main():
                 caption_text=caption_final,
             )
             produced_audio = audio_for_platform if (args.content_type == "music" and audio_for_platform) else None
+            merged_output = None
+            if args.content_type == "music" and best_vid and produced_audio and os.path.exists(best_vid) and os.path.exists(produced_audio):
+                merged_output = merge_video_audio(best_vid, produced_audio)
+                best_vid = merged_output
             manual_video_instruction = None
-            if args.content_type == "music":
+            if args.content_type == "music" and not merged_output:
                 manual_video_instruction = (
                     "AI video generation is disabled. Use the creative prompts/caption to generate video manually, "
                     "then merge your generated video with produced_audio."

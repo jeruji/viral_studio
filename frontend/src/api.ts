@@ -1,6 +1,7 @@
 import { Job } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
 export const getToken = () => localStorage.getItem("vs_token");
 export const setToken = (token: string) => localStorage.setItem("vs_token", token);
@@ -12,6 +13,7 @@ export async function login(email: string, password: string) {
   form.append("password", password);
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
+    headers: NGROK_HEADER,
     body: form
   });
   if (!res.ok) {
@@ -24,6 +26,7 @@ export async function fetchJobs(): Promise<Job[]> {
   const token = getToken();
   const res = await fetch(`${API_URL}/jobs`, {
     headers: {
+      ...NGROK_HEADER,
       Authorization: `Bearer ${token}`
     }
   });
@@ -61,6 +64,7 @@ export async function submitJob(payload: {
   const res = await fetch(`${API_URL}/jobs`, {
     method: "POST",
     headers: {
+      ...NGROK_HEADER,
       Authorization: `Bearer ${token}`
     },
     body: form

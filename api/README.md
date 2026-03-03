@@ -60,7 +60,8 @@ Email/password sesuai admin di step 3.
 7) Submit job
 
 Upload audio + lyrics (opsional) atau isi description, (+ video optional)
-Isi mood, platforms, audio_style, clip_seg_sec, content_type (music/general)
+Isi mood, platforms, audio_style, content_type (music/general)
+`clip_seg_sec` hanya perlu untuk `content_type=music` saat `generate_ai_video=true`.
 Submit
 8) Cek status job
 

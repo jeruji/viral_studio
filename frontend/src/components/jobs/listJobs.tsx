@@ -43,6 +43,28 @@ const ListJobs = () => {
             swal("Download Video", "Failed to download video from API", "error");
         }
     }
+    async function handleDownloadAudio(jobId: number, platformKey: string, fallbackPath?: string) {
+        try {
+            const res = await fetch(`${API_URL}/jobs/${jobId}/download-audio?platform=${encodeURIComponent(platformKey)}`, {
+                headers: authHeader() as HeadersInit
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const fallbackName = (fallbackPath || "").split(/[/\\\\]/).pop() || `${platformKey}.wav`;
+            a.download = fallbackName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            swal("Download Audio", "Failed to download produced audio from API", "error");
+        }
+    }
 
 
     async function getAllJobs() {
@@ -165,6 +187,19 @@ const ListJobs = () => {
                                                         </>
                                                     )}
                                                 </p>
+                                                {item?.["produced_audio"] && (
+                                                    <p>
+                                                        <strong>Produced Audio: {" "}</strong>
+                                                        {item["produced_audio"]}
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary ms-2"
+                                                            onClick={() => handleDownloadAudio(detailJob.id, platform, item["produced_audio"])}
+                                                        >
+                                                            Download
+                                                        </button>
+                                                    </p>
+                                                )}
                                                 <p>
                                                     <strong>Virality Score: {" "}</strong>
                                                     {item["ml_baseline"]["virality_score"]}

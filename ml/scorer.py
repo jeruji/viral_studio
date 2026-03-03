@@ -1,16 +1,24 @@
 import joblib
 import pandas as pd
+import numpy as np
 
 class ViralityScorer:
     def __init__(self):
+        self.virality_calibration = None
         try:
-            self.virality_model = joblib.load("models/virality_model.pkl")
+            v_obj = joblib.load("models/virality_model.pkl")
+            if isinstance(v_obj, dict) and "model" in v_obj:
+                self.virality_model = v_obj.get("model")
+                self.virality_calibration = v_obj.get("calibration")
+            else:
+                self.virality_model = v_obj
             self.genre_model = joblib.load("models/genre_model.pkl")
             self.audience_model = joblib.load("models/audience_model.pkl")
         except Exception:
             self.virality_model = None
             self.genre_model = None
             self.audience_model = None
+            self.virality_calibration = None
         self.genre_map = {
             0: "blues",
             1: "classical",
@@ -63,12 +71,19 @@ class ViralityScorer:
             virality_score = float(proba[idx] * 100.0)
         else:
             pred = float(self.virality_model.predict(Xv)[0])
-            # model regression predicts engagement_rate (0-1 range); clamp to 0-100
-            virality_score = max(0.0, min(100.0, pred * 100.0))
+            # Regression calibrated to dataset percentile (ECDF) when available.
+            cal = self.virality_calibration if isinstance(self.virality_calibration, dict) else {}
+            y_sorted = np.asarray(cal.get("y_sorted", []), dtype=float)
+            if y_sorted.size > 0:
+                rank = np.searchsorted(y_sorted, pred, side="right")
+                virality_score = float((rank / y_sorted.size) * 100.0)
+            else:
+                pred = max(0.0, pred)
+                virality_score = max(0.0, min(100.0, pred * 100.0))
 
         genre_pred = self.genre_model.predict(Xg)[0]
         if isinstance(genre_pred, str):
-            genre_label = genre_pred.strip().lower()
+            genre_label = genre_pred.strip().lower().replace("hip hop", "hiphop").replace("hip-hop", "hiphop")
             genre_id = int(self.genre_rev.get(genre_label, -1))
         else:
             genre_id = int(genre_pred)

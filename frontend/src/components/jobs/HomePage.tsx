@@ -28,7 +28,7 @@ const HomePage = () => {
     const [platforms, setPlatforms] = useState([]);
     const [remix, setRemix] = useState(true);
     const [generateAiVideo, setGenerateAiVideo] = useState(true);
-    const [audioStyle, setAudioStyle] = useState("lofi_chill");
+    const [audioStyle, setAudioStyle] = useState("jazz");
     const [clipSegSec, setClipSegSec] = useState("5");
     const [audio, setAudio] = useState<File | null>(null);
     const [video, setVideo] = useState<File | null>(null);
@@ -57,6 +57,26 @@ const HomePage = () => {
             window.URL.revokeObjectURL(url);
         } catch (err) {
             swal("Download Video", "Failed to download video from API", "error");
+        }
+    }
+    async function handleDownloadAudio(jobId: string, platformKey: string, fallbackPath?: string) {
+        try {
+            const res = await fetch(`${API_URL}/jobs/${jobId}/download-audio?platform=${encodeURIComponent(platformKey)}`, {
+                headers: authHeader() as HeadersInit
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const fallbackName = (fallbackPath || "").split(/[/\\\\]/).pop() || `${platformKey}.wav`;
+            a.download = fallbackName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            swal("Download Audio", "Failed to download produced audio from API", "error");
         }
     }
 
@@ -88,9 +108,12 @@ const HomePage = () => {
         if (contentType == "general") {
             fieldsToValidate.push({ field: description, name: "Description" }, { field: video, name: "video" })
         } else {
-            fieldsToValidate.push({ field: mood, name: "Mood" }, { field: remix, name: "Remix" }, { field: audioStyle, name: "Audio Style" }, { field: clipSegSec, name: "Clip Seg Sec" },
+            fieldsToValidate.push({ field: mood, name: "Mood" }, { field: remix, name: "Remix" }, { field: audioStyle, name: "Audio Style" },
                 { field: audio, name: "audio" }, { field: lyrics, name: "Lyrics" }
             )
+            if (generateAiVideo) {
+                fieldsToValidate.push({ field: clipSegSec, name: "Clip Seg Sec" })
+            }
         }
 
         for (const item of fieldsToValidate) {
@@ -114,11 +137,14 @@ const HomePage = () => {
             if (contentType === "general") {
                 formData.append("description", description);
             } else {
+                const safeAudioStyle = audioStyles.includes(audioStyle) ? audioStyle : "jazz";
                 formData.append("mood", mood);
                 formData.append("remix", remix.toString());
                 formData.append("generate_ai_video", generateAiVideo.toString());
-                formData.append("audio_style", audioStyle);
-                formData.append("clip_seg_sec", clipSegSec);
+                formData.append("audio_style", safeAudioStyle);
+                if (generateAiVideo) {
+                    formData.append("clip_seg_sec", clipSegSec);
+                }
                 if (audio) formData.append("audio", audio);
                 if (lyrics) formData.append("lyrics", lyrics);
             }
@@ -127,6 +153,7 @@ const HomePage = () => {
 
             const res = await CreateService.createJob(formData);
 
+            setJobs([]);
             setLoadingJobs(true);
             setStatusJobs(res.status);
             setJobId(res.id);
@@ -139,14 +166,14 @@ const HomePage = () => {
 
     useEffect(() => {
         if (!jobId) return;
-        if (statusJobs !== "queued") return;
+        if (statusJobs !== "queued" && statusJobs !== "running") return;
 
         const intervalId = setInterval(() => {
             refreshJobs(jobId);
-        }, 10000);
+        }, 5000);
 
         return () => clearInterval(intervalId);
-    }, [statusJobs]);
+    }, [statusJobs, jobId]);
 
     useEffect(() => {
         const fetchUserInfo = async () => {
@@ -163,14 +190,38 @@ const HomePage = () => {
     async function refreshJobs(id: string) {
         setLoadingJobs(true);
         try {
-            await RetrieveService.retrieveResultJobsById(id).then((res: any) => {
-                if (res?.detail) { return }
-                setJobs([res])
-                setStatusJobs("done")
-                setLoadingJobs(false)
-            })
+            const jobInfo = await RetrieveService.retrieveJobById(id);
+            if (!jobInfo) {
+                setLoadingJobs(false);
+                return;
+            }
+            const status = String(jobInfo.status || "").toLowerCase();
+            setStatusJobs(status || "running");
+
+            if (status === "queued" || status === "running") {
+                setLoadingJobs(true);
+                return;
+            }
+
+            if (status === "failed") {
+                setLoadingJobs(false);
+                swal("Content", jobInfo.error_message || "Job failed", "error");
+                return;
+            }
+
+            if (status === "success") {
+                const res = await RetrieveService.retrieveResultJobsById(id);
+                if (!res || res?.detail) {
+                    setLoadingJobs(false);
+                    return;
+                }
+                setJobs([res]);
+                setStatusJobs("done");
+                setLoadingJobs(false);
+            }
         } catch (err) {
             setError("Gagal mengambil status job.");
+            setLoadingJobs(false);
         }
     }
     return (
@@ -347,16 +398,18 @@ const HomePage = () => {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="row ">
-                                        <div className="col-3">Clip Segment (sec)</div>
-                                        <div className="col">
-                                            <input
-                                                value={clipSegSec}
-                                                onChange={(e) => setClipSegSec(e.target.value)}
-                                                className="border-radius-8 ps-2 input-130"
-                                            ></input>
+                                    {generateAiVideo && (
+                                        <div className="row ">
+                                            <div className="col-3">Clip Segment (sec)</div>
+                                            <div className="col">
+                                                <input
+                                                    value={clipSegSec}
+                                                    onChange={(e) => setClipSegSec(e.target.value)}
+                                                    className="border-radius-8 ps-2 input-130"
+                                                ></input>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                     <div className="row py-2">
                                         <div className="col-3">
                                             Lyrics
@@ -415,8 +468,16 @@ const HomePage = () => {
                             <div className="row py-3">
                                 <div className="col">
                                     <div className="accordion">
-                                        {jobs.map((job, jIndex) =>
-                                            Object.keys(job).map((platform, pIndex) => {
+                                        {jobs.map((job, jIndex) => {
+                                            const platformEntries = Object.entries(job || {}).filter(([_, v]: any) => {
+                                                return v && typeof v === "object" && (
+                                                    "caption" in v ||
+                                                    "best_video" in v ||
+                                                    "ml_baseline" in v ||
+                                                    "recommendations" in v
+                                                );
+                                            });
+                                            return platformEntries.map(([platform], pIndex) => {
                                                 const key = `${jIndex}-${platform}`
 
                                                 return (
@@ -446,14 +507,17 @@ const HomePage = () => {
                                                         >
                                                             <div className="accordion-body">
                                                                 {(() => {
-                                                                    const bestVideoPath = job?.[platform]?.["best_video"] || "";
-                                                                    const firstCaption = job?.[platform]?.creative?.captions?.[0];
+                                                                    const resultItem = job?.[platform] || {};
+                                                                    const bestVideoPath = resultItem?.["best_video"] || "";
+                                                                    const firstCaption = resultItem?.creative?.captions?.[0];
                                                                     const hashtagsText = normalizeHashtags(firstCaption?.hashtags);
+                                                                    const mlBaseline = resultItem?.["ml_baseline"] || {};
+                                                                    const recommendations = Array.isArray(resultItem?.["recommendations"]) ? resultItem["recommendations"] : [];
                                                                     return (
                                                                         <>
                                                                 <p>
                                                                     <strong>Caption:</strong>{" "}
-                                                                    {job[platform].caption}
+                                                                    {resultItem?.caption || "-"}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Hashtags: {" "}</strong>
@@ -472,40 +536,49 @@ const HomePage = () => {
                                                                         </button>
                                                                     )}
                                                                 </p>
-                                                                {job[platform]["produced_audio"] && (
+                                                                {resultItem?.["produced_audio"] && (
                                                                     <p>
                                                                         <strong>Produced Audio: {" "}</strong>
-                                                                        {job[platform]["produced_audio"]}
+                                                                        {resultItem["produced_audio"]}
+                                                                        {jobId && (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-sm btn-outline-primary ms-2"
+                                                                                onClick={() => handleDownloadAudio(jobId, platform, resultItem["produced_audio"])}
+                                                                            >
+                                                                                Download
+                                                                            </button>
+                                                                        )}
                                                                     </p>
                                                                 )}
-                                                                {job[platform]["manual_video_instruction"] && (
+                                                                {resultItem?.["manual_video_instruction"] && (
                                                                     <p>
                                                                         <strong>Manual Video Instruction: {" "}</strong>
-                                                                        {job[platform]["manual_video_instruction"]}
+                                                                        {resultItem["manual_video_instruction"]}
                                                                     </p>
                                                                 )}
                                                                 <p>
                                                                     <strong>Virality Score: {" "}</strong>
-                                                                    {job[platform]["ml_baseline"]["virality_score"]}
+                                                                    {mlBaseline?.["virality_score"] ?? "-"}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Audience: {" "}</strong>
-                                                                    {job[platform]["ml_baseline"]["audience_label"].split("_").join(" ")}
+                                                                    {String(mlBaseline?.["audience_label"] || "-").split("_").join(" ")}
                                                                 </p>
                                                                 <p>
                                                                     <strong>Genre: {" "}</strong>
-                                                                    {job[platform]["ml_baseline"]["genre_label"]}
+                                                                    {mlBaseline?.["genre_label"] || "-"}
                                                                 </p>
                                                                 <strong>Recommendations: </strong>
                                                                 <ul>
-                                                                    {job[platform]["recommendations"].map((recom: string, indexRecom: number) => {
+                                                                    {recommendations.map((recom: string, indexRecom: number) => {
                                                                         return (
-                                                                            <li key={`recommendation-${job[platform]}-${indexRecom}`}>
+                                                                            <li key={`recommendation-${platform}-${indexRecom}`}>
                                                                                 {recom}
                                                                             </li>
                                                                         )
                                                                     })}
-
+                                                                    {recommendations.length === 0 && <li>-</li>}
                                                                 </ul>
                                                                         </>
                                                                     );
@@ -515,7 +588,7 @@ const HomePage = () => {
                                                     </div>
                                                 )
                                             })
-                                        )}
+                                        })}
                                     </div>
 
                                 </div>

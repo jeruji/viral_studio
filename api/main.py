@@ -147,7 +147,11 @@ def _run_pipeline(job_id: int, params: dict, input_paths: dict):
             cmd += ["--remix"]
         if params.get("audio_style"):
             cmd += ["--audio-style", params["audio_style"]]
-        if params.get("clip_seg_sec"):
+        if (
+            params.get("clip_seg_sec")
+            and params.get("content_type") == "music"
+            and params.get("generate_ai_video", True)
+        ):
             cmd += ["--clip-seg-sec", str(params["clip_seg_sec"])]
         if os.getenv("KIE_CALLBACK_URL"):
             cmd += ["--kie-callback-url", os.getenv("KIE_CALLBACK_URL")]
@@ -220,12 +224,18 @@ def create_job(
         video_path = upload_dir / f"{current.id}_{ts}_{video.filename}"
         video_path.write_bytes(video.file.read())
 
+    effective_clip_seg_sec = (
+        clip_seg_sec
+        if (content_type or "music") == "music" and generate_ai_video
+        else None
+    )
+
     params = {
         "mood": mood,
         "platforms": platforms.split(",") if platforms else [],
         "remix": remix,
         "audio_style": audio_style,
-        "clip_seg_sec": clip_seg_sec,
+        "clip_seg_sec": effective_clip_seg_sec,
         "generate_ai_video": generate_ai_video,
         "content_type": content_type,
         "description": description,
@@ -291,6 +301,37 @@ def download_job_video(
     return FileResponse(
         path=str(path),
         media_type="video/mp4",
+        filename=path.name,
+    )
+
+
+@app.get("/jobs/{job_id}/download-audio")
+def download_job_audio(
+    job_id: int,
+    platform: str = Query(..., description="Platform key inside report_json, e.g. tiktok"),
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    job = _get_job_or_404(job_id, db, current)
+    report_json = _load_report_json(job)
+    if not report_json:
+        raise HTTPException(status_code=404, detail="Report not ready")
+    item = report_json.get(platform)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail=f"Platform '{platform}' not found in report")
+    produced_audio = item.get("produced_audio")
+    if not produced_audio:
+        raise HTTPException(status_code=404, detail="No produced audio output for this platform")
+
+    path = Path(str(produced_audio))
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Audio file missing on server")
+    if not path.is_file():
+        raise HTTPException(status_code=400, detail="Invalid audio path")
+
+    return FileResponse(
+        path=str(path),
+        media_type="audio/wav",
         filename=path.name,
     )
 def _load_report_json(job: Job) -> Optional[dict]:

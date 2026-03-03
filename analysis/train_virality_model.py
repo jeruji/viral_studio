@@ -6,11 +6,11 @@ import json
 import joblib
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, roc_auc_score
 
 
-DATASET_PATH = Path(r"C:\Users\Public\Documents\Social Media Engagement Dataset.csv")
+DATASET_PATH = Path(r"D:\Users\echo.w.m.simanjuntak\Documents\social_media_performance.csv")
 MODEL_OUT = Path("models/virality_model.pkl")
 
 # Keep feature set aligned with runtime features in main.py + ml/feature_text.py
@@ -135,6 +135,10 @@ def _emotion_id(emotion: str) -> float:
 
 def _sentiment_code(label: str) -> float:
     t = (label or "").strip().lower()
+    try:
+        return float(t)
+    except Exception:
+        pass
     if "neg" in t:
         return 0.0
     if "pos" in t:
@@ -148,39 +152,43 @@ def main():
 
     df = pd.read_csv(DATASET_PATH)
 
+    def _series(col: str):
+        if col in df.columns:
+            return df[col].fillna("").astype(str)
+        return pd.Series([""] * len(df), index=df.index, dtype="object")
+
     # Build a single text field for CTA/keyword detection
     text = (
-        df.get("text_content", "").astype(str)
+        _series("text_content")
         + " "
-        + df.get("hashtags", "").astype(str)
+        + _series("hashtags")
         + " "
-        + df.get("keywords", "").astype(str)
+        + _series("keywords")
+        + " "
+        + _series("topic")
+        + " "
+        + _series("content_type")
     )
 
-    # Engagement rate (target)
-    if "engagement_rate" in df.columns:
-        engagement = pd.to_numeric(df["engagement_rate"], errors="coerce")
+    # Classification target (preferred): is_viral
+    if "is_viral" in df.columns:
+        y = pd.to_numeric(df["is_viral"], errors="coerce").fillna(0).astype(int)
     else:
-        likes = pd.to_numeric(df.get("likes_count", 0), errors="coerce")
-        shares = pd.to_numeric(df.get("shares_count", 0), errors="coerce")
-        comments = pd.to_numeric(df.get("comments_count", 0), errors="coerce")
-        impressions = pd.to_numeric(df.get("impressions", 0), errors="coerce")
-        engagement = (likes + shares + comments) / impressions.replace(0, pd.NA)
-
-    engagement = engagement.replace([pd.NA, pd.NaT], pd.NA).astype("float64")
-    engagement = engagement.dropna()
-
-    # Align df to valid engagement rows
-    df = df.loc[engagement.index]
-    text = text.loc[engagement.index]
-
-    # Regression target: engagement_rate (continuous)
-    y = engagement.astype("float64")
+        # Fallback if dataset variant doesn't have is_viral
+        if "engagement_rate" not in df.columns:
+            raise RuntimeError("Dataset must contain is_viral or engagement_rate")
+        engagement = pd.to_numeric(df["engagement_rate"], errors="coerce")
+        threshold = engagement.quantile(0.75)
+        y = (engagement >= threshold).astype(int)
 
     # Build features aligned with runtime
     feats = {}
     feats["has_cta"] = text.apply(_has_cta)
-    feats["sentiment_code"] = df.get("sentiment_label", "").apply(_sentiment_code)
+    if "sentiment_score" in df.columns:
+        ss = pd.to_numeric(df["sentiment_score"], errors="coerce").fillna(0.0)
+        feats["sentiment_code"] = ss.apply(lambda v: 2.0 if v > 0.2 else (0.0 if v < -0.2 else 1.0))
+    else:
+        feats["sentiment_code"] = _series("sentiment_label").apply(_sentiment_code)
     stats = text.apply(_text_stats)
     feats["text_len"] = stats.apply(lambda x: x["text_len"])
     feats["word_count"] = stats.apply(lambda x: x["word_count"])
@@ -190,16 +198,25 @@ def main():
     feats["question_count"] = stats.apply(lambda x: x["question_count"])
     feats["avg_word_len"] = stats.apply(lambda x: x["avg_word_len"])
 
-    platform_stats = df.get("platform", "").apply(_one_hot_platform)
+    platform_stats = _series("platform").apply(_one_hot_platform)
     for k in ["platform_instagram", "platform_tiktok", "platform_twitter", "platform_facebook", "platform_youtube", "platform_reddit"]:
         feats[k] = platform_stats.apply(lambda x: x.get(k, 0.0))
 
-    day_stats = df.get("day_of_week", "").apply(_day_of_week_one_hot)
+    day_stats = _series("day_of_week")
+    if (day_stats == "").all() and "post_day" in df.columns:
+        day_stats = _series("post_day")
+    day_stats = day_stats.apply(_day_of_week_one_hot)
     for i in range(7):
         feats[f"day_{i}"] = day_stats.apply(lambda x: x.get(f"day_{i}", 0.0))
 
-    feats["toxicity_score"] = pd.to_numeric(df.get("toxicity_score", 0.0), errors="coerce").fillna(0.0)
-    feats["emotion_type_id"] = df.get("emotion_type", "").apply(_emotion_id)
+    if "toxicity_score" in df.columns:
+        feats["toxicity_score"] = pd.to_numeric(df["toxicity_score"], errors="coerce").fillna(0.0)
+    else:
+        feats["toxicity_score"] = 0.0
+    if "emotion_type" in df.columns:
+        feats["emotion_type_id"] = _series("emotion_type").apply(_emotion_id)
+    else:
+        feats["emotion_type_id"] = 0.0
 
     kw_features = _load_keyword_features()
     for key, kws in (kw_features or {}).items():
@@ -225,25 +242,32 @@ def main():
             X[col] = 0.0
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    model = RandomForestRegressor(
+    model = RandomForestClassifier(
         n_estimators=400,
         max_depth=None,
         random_state=42,
         n_jobs=-1,
+        class_weight="balanced_subsample",
     )
     model.fit(X_train, y_train)
 
     preds = model.predict(X_test)
-    mae = mean_absolute_error(y_test, preds)
-    r2 = r2_score(y_test, preds)
-    print(f"[INFO] MAE: {mae:.4f}")
-    print(f"[INFO] R2:  {r2:.4f}")
+    proba = model.predict_proba(X_test)[:, 1]
+    auc = roc_auc_score(y_test, proba)
+    print(classification_report(y_test, preds))
+    print(f"[INFO] ROC-AUC: {auc:.4f}")
+
+    payload = {
+        "model": model,
+        "target": "is_viral",
+        "calibration": None,
+    }
 
     MODEL_OUT.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, MODEL_OUT)
+    joblib.dump(payload, MODEL_OUT)
     print(f"[OK] Saved: {MODEL_OUT}")
 
 
